@@ -15,13 +15,15 @@ public sealed class SymbolIcon : Control
     private static readonly ConcurrentDictionary<IconSymbol, Geometry> GeometryCache = new();
 
     // The native design size of the vector icons.
-    private const double ViewboxSize = 24.0;
 
     private Pen? _pen;
     private Geometry? _geometry;
 
     #region Avalonia Properties
 
+    public static readonly StyledProperty<double> ViewboxSizeProperty =
+        AvaloniaProperty.Register<SymbolIcon, double>(nameof(ViewboxSize), 24.0);
+    
     public static readonly StyledProperty<double> SizeProperty =
         AvaloniaProperty.Register<SymbolIcon, double>(nameof(Size), 18.0);
 
@@ -38,6 +40,16 @@ public sealed class SymbolIcon : Control
 
     #region CLR Accessors
 
+    /// <summary>
+    /// Gets or sets the native design size of the vector icons.
+    /// </summary>
+    public double ViewboxSize
+    {
+        get => GetValue(ViewboxSizeProperty);
+        set => SetValue(ViewboxSizeProperty, value);
+    }
+    
+    
     /// <summary>
     /// Gets or sets the uniform width and height of the icon.
     /// </summary>

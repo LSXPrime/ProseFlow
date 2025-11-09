@@ -10,7 +10,7 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AvaloniaVersion>11.3.6</AvaloniaVersion>
-        <Version>0.2.0</Version>
+        <Version>0.3.0</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
@@ -69,7 +69,6 @@
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Serilog.Sinks.Console" Version="6.0.0" />
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Serilog.Sinks.Debug" Version="3.0.0" />
         <PackageReference Include="ShadUI" Version="0.1.5" />
-        <PackageReference Include="Xaml.Behaviors.Interactivity" Version="11.3.6.4" />
     </ItemGroup>
 
     <ItemGroup>

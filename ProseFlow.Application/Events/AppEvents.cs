@@ -63,20 +63,23 @@ public static class AppEvents
     /// The UI layer subscribes to this, shows the menu, and returns the user's selection.
     /// The Func returns a task that resolves to the user's choice, or null if cancelled.
     /// </summary>
-    public static event Func<IEnumerable<Action>, string, Task<ActionExecutionRequest?>>? ShowFloatingMenuRequested;
+    public static event Func<IEnumerable<Action>, string, bool, Task<ActionExecutionRequest?>>? ShowFloatingMenuRequested;
 
     /// <summary>
     /// Invokes the ShowFloatingMenuRequested event.
     /// </summary>
-    public static async Task<ActionExecutionRequest?> RequestFloatingMenuAsync(IEnumerable<Action> availableActions, string activeAppContext)
+    /// <param name="availableActions">The list of actions to display.</param>
+    /// <param name="activeAppContext">The context of the active application.</param>
+    /// <param name="isGenerationMode">True if the menu should be in 'generate from scratch' mode.</param>
+    public static async Task<ActionExecutionRequest?> RequestFloatingMenuAsync(IEnumerable<Action> availableActions, string activeAppContext, bool isGenerationMode)
     {
         if (!IsShowFloatingMenuEnabled) return null;
 
         return ShowFloatingMenuRequested is not null
-            ? await ShowFloatingMenuRequested.Invoke(availableActions, activeAppContext)
+            ? await ShowFloatingMenuRequested.Invoke(availableActions, activeAppContext, isGenerationMode)
             : await Task.FromResult<ActionExecutionRequest?>(null);
     }
-
+    
     /// <summary>
     /// Raised when a result needs to be displayed in a window.
     /// The UI subscribes and is responsible for showing the window and then returning a Task

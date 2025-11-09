@@ -12,16 +12,13 @@ using Microsoft.Extensions.DependencyInjection;
 using ProseFlow.Application.DTOs;
 using ProseFlow.Application.DTOs.Models;
 using ProseFlow.Application.Services;
-using ProseFlow.Core.Enums;
 using ProseFlow.UI.Models;
 using ProseFlow.UI.ViewModels.Actions;
 using ProseFlow.UI.ViewModels.Dialogs;
 using ProseFlow.UI.ViewModels.Downloads;
 using ProseFlow.UI.ViewModels.Providers;
-using ProseFlow.UI.ViewModels.Windows;
 using ProseFlow.UI.Views.Actions;
 using ProseFlow.UI.Views.Dialogs;
-using ProseFlow.UI.Views.Windows;
 using ShadUI;
 using Action = ProseFlow.Core.Models.Action;
 using Window = Avalonia.Controls.Window;
@@ -115,7 +112,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
         
         var actionService = serviceProvider.GetRequiredService<ActionManagementService>();
 
-        var editorViewModel = new ActionEditorViewModel(action, actionService);
+        var editorViewModel = new ActionEditorViewModel(action, actionService, this);
         var editorWindow = new ActionEditorView { DataContext = editorViewModel };
 
         return await editorWindow.ShowDialog<bool>(mainWindow);
@@ -209,21 +206,22 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     }
     
     /// <inheritdoc />
-    public Task<InputDialogResult> ShowInputDialogAsync(string title, string message, string confirmButtonText, string? initialValue = null)
+    public async Task<InputDialogResult> ShowInputDialogAsync(string title, string message, string confirmButtonText, string? initialValue = null)
     {
-        var tcs = new TaskCompletionSource<InputDialogResult>();
+        var mainWindow = GetWindow();
+        if (mainWindow is null) return new InputDialogResult(false, null);
         
-        var dialogManager = serviceProvider.GetRequiredService<DialogManager>();
+        
         var inputViewModel = serviceProvider.GetRequiredService<InputDialogViewModel>();
         inputViewModel.Initialize(title, message, confirmButtonText, initialValue);
 
-        dialogManager.CreateDialog(inputViewModel)
-            .Dismissible()
-            .WithSuccessCallback(vm => tcs.SetResult(new InputDialogResult(true, vm.InputText)))
-            .WithCancelCallback(() => tcs.SetResult(new InputDialogResult(false, null)))
-            .Show();
+        var inputWindow = new InputDialogView { DataContext = inputViewModel };
+        _ = inputWindow.ShowDialog(mainWindow);
 
-        return tcs.Task;
+        var result = await inputViewModel.CompletionSource.Task;
+        inputWindow.Close();
+        
+        return result;
     }
 
     /// <inheritdoc />
@@ -233,6 +231,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
         
         var dialogManager = serviceProvider.GetRequiredService<DialogManager>();
         var modelLibraryViewModel = serviceProvider.GetRequiredService<ModelLibraryViewModel>();
+        _ = modelLibraryViewModel.OnNavigatedToAsync();
         dialogManager
             .CreateDialog(modelLibraryViewModel)
             .Dismissible()
@@ -289,7 +288,7 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
     }
 
     /// <inheritdoc />
-    public Task<bool> ShowCriticalConfirmationDialogAsync(Window owner, string title, string message, string confirmText, string cancelText)
+    public async Task<bool> ShowCriticalConfirmationDialogAsync(string title, string message, string confirmText, string cancelText)
     {
         // Native blocking window for startup-critical error.
         var window = new Window
@@ -302,12 +301,23 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
             CanResize = false,
             ShowInTaskbar = true
         };
+        
+        var tcs = new TaskCompletionSource<bool>();
+
 
         var confirmButton = new Button { Content = confirmText, IsDefault = true };
         var cancelButton = new Button { Content = cancelText, IsCancel = true };
 
-        confirmButton.Click += (_, _) => window.Close(true);
-        cancelButton.Click += (_, _) => window.Close(false);
+        confirmButton.Click += (_, _) =>
+        {
+            tcs.SetResult(true);
+            window.Close();
+        };
+        cancelButton.Click += (_, _) =>
+        {
+            tcs.SetResult(false);
+            window.Close();
+        };
 
         window.Content = new StackPanel
         {
@@ -331,8 +341,11 @@ public class DialogService(IServiceProvider serviceProvider) : IDialogService
                 }
             }
         };
+        
+        window.Show();
+        window.Activate();
 
-        return window.ShowDialog<bool>(owner);
+        return await tcs.Task;
     }
     
     /// <inheritdoc />

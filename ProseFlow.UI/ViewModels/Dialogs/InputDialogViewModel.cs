@@ -1,13 +1,14 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ShadUI;
+using ProseFlow.UI.Models;
 
 namespace ProseFlow.UI.ViewModels.Dialogs;
 
 /// <summary>
 /// A reusable ViewModel for a dialog that captures a single string input from the user.
 /// </summary>
-public partial class InputDialogViewModel(DialogManager dialogManager) : ViewModelBase
+public partial class InputDialogViewModel : ViewModelBase
 {
     [ObservableProperty]
     private string _title = "Input Required";
@@ -20,6 +21,8 @@ public partial class InputDialogViewModel(DialogManager dialogManager) : ViewMod
 
     [ObservableProperty]
     private string _inputText = string.Empty;
+    
+    public readonly TaskCompletionSource<InputDialogResult> CompletionSource = new();
 
     /// <summary>
     /// Initializes the ViewModel with the necessary display text and an optional initial value.
@@ -35,14 +38,12 @@ public partial class InputDialogViewModel(DialogManager dialogManager) : ViewMod
     [RelayCommand]
     private void Submit()
     {
-        // Close the dialog, signaling success. The DialogService will retrieve the InputText.
-        dialogManager.Close(this, new CloseDialogOptions { Success = true });
+        CompletionSource.TrySetResult(new InputDialogResult(true, InputText));
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        // Close the dialog, signaling cancellation.
-        dialogManager.Close(this);
+        CompletionSource.TrySetResult(new InputDialogResult(false, null));
     }
 }

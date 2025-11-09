@@ -6,4 +6,11 @@
     <StyleInclude Source="avares://ProseFlow/Styles/Window.axaml" />
     <StyleInclude Source="avares://ProseFlow/Styles/Controls/OverviewCard.axaml" />
     <StyleInclude Source="avares://ProseFlow/Styles/Controls/FloatingOrb.axaml" />
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <MergeResourceInclude Source="avares://ProseFlow/Styles/Expander.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
 </Styles>

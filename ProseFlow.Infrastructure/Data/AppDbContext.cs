@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Action> Actions { get; set; }
     public DbSet<ActionGroup> ActionGroups { get; set; }
+    public DbSet<ActionPlaceholder> ActionPlaceholders { get; set; }
     public DbSet<GeneralSettings> GeneralSettings { get; set; }
     public DbSet<ProviderSettings> ProviderSettings { get; set; }
     public DbSet<CloudProviderConfiguration> CloudProviderConfigurations { get; set; }
@@ -41,6 +42,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Set the default value for ActionGroupId
             entity.Property(a => a.ActionGroupId)
                 .HasDefaultValue(1);
+
+            // Configure the one-to-many relationship with ActionPlaceholder
+            entity.HasMany(a => a.Placeholders)
+                .WithOne(p => p.Action)
+                .HasForeignKey(p => p.ActionId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Define a value comparer for the List<string> to ensure EF Core can track changes correctly.
             var valueComparer = new ValueComparer<List<string>>(

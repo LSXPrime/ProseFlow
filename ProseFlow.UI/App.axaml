@@ -30,6 +30,7 @@
             <converters:FileSizeConverter x:Key="FileSizeConverter" />
             <converters:NumericStringConverter x:Key="NumericStringConverter" />
             <converters:PasswordStrengthToColorConverter x:Key="PasswordStrengthToColorConverter" />
+            <converters:EqualityToValuesConverter x:Key="EqualityToValuesConverter" />
             
             <Geometry x:Key="IconCloud">M17.25 8.25a.75.75 0 0 1-1.06 1.06l-1.01-1.01a4.5 4.5 0 0 0-8.36 1.5H6.75a.75.75 0 0 1 0-1.5h.07a6 6 0 0 1 11.18-1.05l1.01 1.01a.75.75 0 0 1 .05 1.05Z M9.75 12a.75.75 0 0 1 1.06-1.06l1.01 1.01a4.5 4.5 0 0 0 8.36-1.5h.08a.75.75 0 0 1 0 1.5h-.08a6 6 0 0 1-11.18 1.05l-1.01-1.01a.75.75 0 0 1-.05-1.05Z</Geometry>
             <Geometry x:Key="IconActions">M10.5 18a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z M12 3.75a.75.75 0 0 0-.75.75v6a.75.75 0 0 0 1.5 0v-6a.75.75 0 0 0-.75-.75Z</Geometry>

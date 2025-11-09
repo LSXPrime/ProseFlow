@@ -9,7 +9,7 @@ public partial class HotkeyTutorialViewModel : ViewModelBase
     private string _headerText = "Let's try it!";
     
     [ObservableProperty]
-    private string _instructionText = "Select the text below and press the hotkey to see your actions.";
+    private string _instructionText = "Select the text below and press the hotkey to see how ProseFlow helps you review changes.";
     
     [ObservableProperty]
     private string _configuredHotkey = "Ctrl+J";
@@ -18,7 +18,7 @@ public partial class HotkeyTutorialViewModel : ViewModelBase
     private string _sampleText = "ProseFlow is a grate tool it hlps me writng better";
 
     [ObservableProperty]
-    private bool _showSimulatedMenu;
+    private bool _showSimulatedDiffView;
 
     [ObservableProperty]
     private bool _isCompleted;
@@ -26,16 +26,16 @@ public partial class HotkeyTutorialViewModel : ViewModelBase
     [RelayCommand]
     private void ShowMenu()
     {
-        ShowSimulatedMenu = true;
+        ShowSimulatedDiffView = true;
     }
 
     [RelayCommand]
-    private void SimulateFix()
+    private void SimulateAcceptDiff()
     {
-        ShowSimulatedMenu = false;
+        ShowSimulatedDiffView = false;
         SampleText = "✨ ProseFlow is a great tool. It helps me write better. ✨";
         HeaderText = "NICE! That's the magic.";
-        InstructionText = "You can use this hotkey in any application.";
+        InstructionText = "You can review, refine, or regenerate any result. You can also change the default output mode in Settings.";
         IsCompleted = true;
     }
 }

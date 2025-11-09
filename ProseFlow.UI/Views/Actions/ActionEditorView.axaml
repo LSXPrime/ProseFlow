@@ -5,11 +5,12 @@
     xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
     xmlns:vm="using:ProseFlow.UI.ViewModels.Actions"
     xmlns:icons="clr-namespace:ProseFlow.UI.Controls.Icons"
+    xmlns:coreEnums="clr-namespace:ProseFlow.Core.Enums;assembly=ProseFlow.Core"
+    xmlns:coreModels="clr-namespace:ProseFlow.Core.Models;assembly=ProseFlow.Core"
     x:DataType="vm:ActionEditorViewModel"
     DataContextChanged="Window_OnDataContextChanged"
 
-    Width="600" Height="700"
-    Margin="125"
+    Width="650" SizeToContent="Height" MaxHeight="800"
     WindowStartupLocation="CenterOwner"
     WindowState="Normal"
     CanResize="False"
@@ -46,12 +47,205 @@
                     Watermark="e.g., Proofread this text:" />
 
                 <TextBox
+                    Name="InstructionTextBox"
                     shadui:ControlAssist.Label="Instruction (System Prompt)"
                     shadui:ControlAssist.Height="150"
                     AcceptsReturn="True"
-                    Text="{Binding Action.Instruction}"
+                    Text="{Binding Instruction, Mode=TwoWay}"
                     TextWrapping="Wrap"
                     Watermark="You are a helpful assistant that..." />
+                <!-- Placeholders Section -->
+                <StackPanel>
+                    <TextBlock Classes="Label" Text="Placeholders" Margin="0,0,0,4" />
+                    <ItemsControl ItemsSource="{Binding Placeholders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ActionPlaceholderViewModel">
+                                <shadui:Card Margin="0,4">
+                                    <Expander Padding="8">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="8">
+                                                <TextBlock Text="{Binding Placeholder.Name}" FontWeight="Medium"
+                                                           VerticalAlignment="Center" FontSize="16" />
+                                                <Button Grid.Column="1" Classes="Outline" Content="Insert"
+                                                        Click="InsertPlaceholderButton_OnClick" />
+                                                <Button Grid.Column="2" Classes="Ghost Destructive"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding $parent[Window].((vm:ActionEditorViewModel)DataContext).RemovePlaceholderCommand, FallbackValue={x:Null}}"
+                                                        CommandParameter="{Binding .}">
+                                                    <icons:SymbolIcon Symbol="X" Size="16" />
+                                                </Button>
+                                            </Grid>
+                                        </Expander.Header>
+
+                                        <StackPanel Spacing="12" Margin="0,12">
+                                            <!-- Basic Info -->
+                                            <TextBox shadui:ControlAssist.Label="Label"
+                                                     Text="{Binding Placeholder.Label, Mode=TwoWay}"
+                                                     Watermark="Question to ask at runtime" />
+                                            <ComboBox shadui:ControlAssist.Label="Input Type"
+                                                      ItemsSource="{Binding AvailableInputTypes}"
+                                                      SelectedItem="{Binding InputType, Mode=TwoWay}" />
+                                            <!-- Container for all conditional Default Value controls -->
+                                            <Panel>
+                                                <!-- Default Value for Text-based inputs -->
+                                                <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding IsDefaultValueTextVisible}">
+                                                    <TextBox x:Name="DefaultValueTextBox"
+                                                             shadui:ControlAssist.Label="Default Value (Optional)"
+                                                             shadui:ControlAssist.Hint="Can use smart tokens like {clipboard}, {date:yyyy-MM-dd}, {appContext}"
+                                                             Text="{Binding Placeholder.DefaultValue, Mode=TwoWay}" />
+                                                    <shadui:SimpleDropdown Grid.Column="1"
+                                                                           PopupPlacement="BottomEdgeAlignedRight"
+                                                                           PopupWidth="250"
+                                                                           Tag="{Binding #DefaultValueTextBox}">
+                                                        <shadui:SimpleDropdown.TriggerContent>
+                                                            <icons:SymbolIcon Symbol="Sparkles" Size="16"
+                                                                              ToolTip.Tip="Insert Smart Token" />
+                                                        </shadui:SimpleDropdown.TriggerContent>
+                                                        <ItemsControl ItemsSource="{Binding AvailableSmartTokens}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="coreModels:SmartTokenInfo">
+                                                                    <Button Click="SmartTokenButton_OnClick"
+                                                                            HorizontalContentAlignment="Stretch">
+                                                                        <StackPanel Spacing="4">
+                                                                            <StackPanel Orientation="Horizontal"
+                                                                                    Spacing="8">
+                                                                                <TextBlock Text="{Binding Name}"
+                                                                                        FontWeight="Medium" />
+                                                                                <TextBlock Text="{Binding Token}"
+                                                                                        Classes="Code Small Muted" />
+                                                                            </StackPanel>
+                                                                            <TextBlock Text="{Binding Description}"
+                                                                                    Classes="Caption Muted"
+                                                                                    TextWrapping="Wrap" />
+                                                                        </StackPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </shadui:SimpleDropdown>
+                                                </Grid>
+                                                
+                                                <!-- Default Value for Number -->
+                                                <Grid ColumnDefinitions="*, Auto" IsVisible="{Binding IsDefaultValueNumberVisible}">
+                                                    <NumericUpDown x:Name="DefaultValueNumberUpDown"
+                                                                   shadui:ControlAssist.Label="Default Value (Optional)"
+                                                                   Value="{Binding Placeholder.DefaultValue, Mode=TwoWay}" />
+                                                </Grid>
+                                            
+                                                <!-- Default Value for Boolean -->
+                                                <ToggleSwitch IsVisible="{Binding IsDefaultValueBooleanVisible}"
+                                                              IsChecked="{Binding DefaultBooleanValue, Mode=TwoWay}">
+                                                    Default Value
+                                                </ToggleSwitch>
+                                            
+                                                <!-- 4. Default Value for DatePicker -->
+                                                <DatePicker IsVisible="{Binding IsDefaultValueDateVisible}"
+                                                            shadui:ControlAssist.Label="Default Value (Optional)"
+                                                            SelectedDate="{Binding DefaultDateValue, Mode=TwoWay}" />
+                                            </Panel>
+
+                                            <!-- Options for Choice Type -->
+                                            <StackPanel Spacing="8"
+                                                        IsVisible="{Binding InputType, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static coreEnums:PlaceholderInputType.Choice}}">
+                                                <TextBlock Classes="Small" Text="Options" />
+                                                <ItemsControl ItemsSource="{Binding Options}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel ItemSpacing="4" LineSpacing="4" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="x:String">
+                                                            <Border Classes="Chip">
+                                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                                                    <TextBlock Text="{Binding .}"
+                                                                               VerticalAlignment="Center" />
+                                                                    <Button Grid.Column="1" Classes="Ghost"
+                                                                            Command="{Binding $parent[ItemsControl].((vm:ActionPlaceholderViewModel)DataContext).RemoveOptionCommand, FallbackValue={x:Null}}"
+                                                                            CommandParameter="{Binding .}">
+                                                                        <icons:SymbolIcon Symbol="X" Size="12" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                    <TextBox Watermark="Add an option..."
+                                                             Text="{Binding NewOptionText, Mode=TwoWay}" />
+                                                    <Button Grid.Column="1" Classes="Outline" Content="Add"
+                                                            Command="{Binding AddOptionCommand}" />
+                                                </Grid>
+                                                
+                                                <!-- Default Value for Choice -->
+                                                <ComboBox shadui:ControlAssist.Label="Default Value (Optional)"
+                                                          ItemsSource="{Binding Options}"
+                                                          SelectedItem="{Binding Placeholder.DefaultValue, Mode=TwoWay}" />
+                                            </StackPanel>
+
+                                            <!-- Validation Section -->
+                                            <Expander>
+                                                <Expander.Header>
+                                                    <TextBlock Classes="Small Muted" Text="Validation Rules" />
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="0,8">
+                                                    <ToggleSwitch IsChecked="{Binding IsRequired}">Is Required</ToggleSwitch>
+                                                    <NumericUpDown shadui:ControlAssist.Label="Min Length"
+                                                                   FormatString="0" Minimum="0" Increment="1"
+                                                                   Value="{Binding MinLength, Mode=TwoWay}"
+                                                                   IsVisible="{Binding IsTextualInput}" />
+                                                    <NumericUpDown shadui:ControlAssist.Label="Max Length"
+                                                                   FormatString="0" Minimum="1" Increment="1"
+                                                                   Value="{Binding MaxLength, Mode=TwoWay}"
+                                                                   IsVisible="{Binding IsTextualInput}" />
+                                                    <NumericUpDown shadui:ControlAssist.Label="Min Value"
+                                                                   Value="{Binding MinValue, Mode=TwoWay}"
+                                                                   IsVisible="{Binding IsNumericInput}" />
+                                                    <NumericUpDown shadui:ControlAssist.Label="Max Value"
+                                                                   Value="{Binding MaxValue, Mode=TwoWay}"
+                                                                   IsVisible="{Binding IsNumericInput}" />
+                                                </StackPanel>
+                                            </Expander>
+
+                                            <!-- Conditional Display Section -->
+                                            <Expander>
+                                                <Expander.Header>
+                                                    <TextBlock Classes="Small Muted" Text="Conditional Display" />
+                                                </Expander.Header>
+                                                <StackPanel Spacing="8" Margin="0,8">
+                                                    <ToggleSwitch IsChecked="{Binding IsConditional}">Only show this step if...</ToggleSwitch>
+                                                    <Panel IsVisible="{Binding IsConditional}">
+                                                        <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="8"
+                                                              RowSpacing="8">
+                                                            <ComboBox Grid.Column="0"
+                                                                      shadui:ControlAssist.Label="Placeholder"
+                                                                      ItemsSource="{Binding AvailableConditionSources}"
+                                                                      DisplayMemberBinding="{Binding Placeholder.Name}"
+                                                                      SelectedItem="{Binding ConditionSourcePlaceholder, Mode=TwoWay}" />
+                                                            <ComboBox Grid.Column="1"
+                                                                      shadui:ControlAssist.Label="Operator"
+                                                                      ItemsSource="{Binding AvailableOperators}"
+                                                                      SelectedItem="{Binding ConditionOperator, Mode=TwoWay}" />
+                                                            <TextBox Grid.Column="2" shadui:ControlAssist.Label="Value"
+                                                                     Text="{Binding ConditionValue, Mode=TwoWay}" />
+                                                        </Grid>
+                                                    </Panel>
+                                                </StackPanel>
+                                            </Expander>
+                                        </StackPanel>
+                                    </Expander>
+                                </shadui:Card>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Classes="Outline" HorizontalAlignment="Left" Command="{Binding AddPlaceholderCommand}">
+                        <shadui:ButtonAssist.Icon>
+                            <icons:SymbolIcon Symbol="Plus" Size="16" />
+                        </shadui:ButtonAssist.Icon>
+                        Add Placeholder
+                    </Button>
+                </StackPanel>
+
 
                 <!-- Icon -->
                 <StackPanel>
@@ -59,7 +253,8 @@
                     <TabControl SelectedIndex="{Binding SelectedIconTab}">
                         <TabItem Header="Built-in">
                             <Grid ColumnDefinitions="*, Auto" ColumnSpacing="12" Margin="0,8">
-                                <ComboBox IsEnabled="{Binding SelectedIconTab, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='0|True|False'}"
+                                <ComboBox
+                                    IsEnabled="{Binding SelectedIconTab, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='0|True|False'}"
                                     Grid.Column="0"
                                     ItemsSource="{Binding LucideIcons}"
                                     SelectedItem="{Binding SelectedLucideIcon}">
@@ -124,20 +319,23 @@
                     Watermark="e.g., Code.exe, chrome.exe" />
 
                 <Separator />
-                
-                <ComboBox 
+
+                <ComboBox
                     shadui:ControlAssist.Label="Output Mode"
                     ItemsSource="{Binding OutputModes}"
                     PlaceholderText="Select an output mode (e.g., Replace, Diff, etc.)..."
                     SelectedItem="{Binding Action.OutputMode}" />
 
+                <ToggleSwitch IsChecked="{Binding Action.RequiresSelection}" Margin="10,0,0,0">
+                    Action requires selected text to run
+                </ToggleSwitch>
+
                 <ToggleSwitch IsChecked="{Binding Action.ExplainChanges}" Margin="10,0,0,0">
                     Ask AI to explain changes (may increase token usage)
                 </ToggleSwitch>
             </StackPanel>
-
-
         </ScrollViewer>
+
         <!-- Action Buttons -->
         <shadui:Card.Footer>
             <StackPanel
@@ -146,8 +344,7 @@
                 Spacing="8">
                 <Button
                     Classes="Outline"
-                    Command="{Binding CancelCommand}"
-                    CommandParameter="{Binding $parent[Window]}"
+                    Click="Close_OnPointerPressed"
                     IsCancel="True">
                     <shadui:ButtonAssist.Icon>
                         <icons:SymbolIcon Size="18" Symbol="X" />
@@ -156,8 +353,7 @@
                 </Button>
                 <Button
                     Classes="Primary"
-                    Command="{Binding SaveCommand}"
-                    CommandParameter="{Binding $parent[Window]}"
+                    Click="Save_OnPointerPressed"
                     IsDefault="True">
                     <shadui:ButtonAssist.Icon>
                         <icons:SymbolIcon Size="18" Symbol="Save" />

@@ -10,8 +10,7 @@
     xmlns:core="using:ProseFlow.Core.Models"
     xmlns:icons="clr-namespace:ProseFlow.UI.Controls.Icons"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
-    x:DataType="vm:ModelLibraryViewModel"
-    DataContextChanged="OnDataContextChanged">
+    x:DataType="vm:ModelLibraryViewModel">
 
     <DockPanel>
         <TabControl SelectedIndex="{Binding SelectedTabIndex}" HorizontalAlignment="Center" Margin="0,24">
@@ -32,7 +31,12 @@
                                             <DockPanel>
                                                 <TextBlock Classes="Muted" DockPanel.Dock="Right"
                                                            Text="{Binding Model.Creator}" />
-                                                <shadui:CardTitle Content="{Binding Model.Name}" />
+                                                <StackPanel Orientation="Vertical" Spacing="8" VerticalAlignment="Center">
+                                                    <shadui:CardTitle Content="{Binding Model.Name}" />
+                                                    <Border Classes="Chip Small" IsVisible="{Binding !!Model.Tag}">
+                                                        <TextBlock Text="{Binding Model.Tag}" />
+                                                    </Border>
+                                                </StackPanel>
                                             </DockPanel>
                                         </shadui:Card.Header>
                                         <shadui:Card.Content>

@@ -55,15 +55,17 @@
     </Target>
 
     <ItemGroup>
+        <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+        <PackageReference Include="itext" Version="9.3.0" />
         <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.5-pre441" />
         <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.25.1" />
         <PackageReference Include="LLamaSharp.Backend.Vulkan" Version="0.25.1" />
-        <PackageReference Include="LlmTornado" Version="3.7.45" />
+        <PackageReference Include="LlmTornado" Version="3.8.14" />
         <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="9.0.7"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.7"/>
+        <PackageReference Include="NPOI" Version="2.7.5" />
         <PackageReference Include="SharpHook" Version="7.0.3" />
         <PackageReference Include="TextCopy" Version="6.2.1"/>
-
         <PackageReference Include="LLamaSharp" Version="0.25.0" />
     </ItemGroup>
 

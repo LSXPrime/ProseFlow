@@ -91,10 +91,33 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
 
     public Task UpdateActionAsync(Action action)
     {
-        return ExecuteCommandAsync(unitOfWork =>
+        return ExecuteCommandAsync(async unitOfWork =>
         {
-            unitOfWork.Actions.Update(action);
-            return Task.CompletedTask;
+            var existingAction = await unitOfWork.Actions.GetByIdWithPlaceholdersAsync(action.Id);
+            if (existingAction is null)
+            {
+                logger.LogWarning("Attempted to update a non-existent action with ID {ActionId}.", action.Id);
+                return;
+            }
+
+            // Update scalar properties
+            existingAction.Name = action.Name;
+            existingAction.Prefix = action.Prefix;
+            existingAction.Instruction = action.Instruction;
+            existingAction.Icon = action.Icon;
+            existingAction.OutputMode = action.OutputMode;
+            existingAction.ExplainChanges = action.ExplainChanges;
+            existingAction.RequiresSelection = action.RequiresSelection;
+            existingAction.ApplicationContext = action.ApplicationContext;
+            existingAction.ActionGroupId = action.ActionGroupId;
+            
+            existingAction.Placeholders.Clear();
+            foreach (var placeholder in action.Placeholders)
+            {
+                // Ensure new placeholders don't have an ID that could confuse EF Core
+                placeholder.Id = 0;
+                existingAction.Placeholders.Add(placeholder);
+            }
         });
     }
 
@@ -123,6 +146,47 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
         {
             var action = await unitOfWork.Actions.GetByIdAsync(actionId);
             if (action is not null) unitOfWork.Actions.Delete(action);
+        });
+    }
+    
+    public Task DeleteActionsAsync(IEnumerable<int> actionIds)
+    {
+        return ExecuteCommandAsync(async unitOfWork =>
+        {
+            var actionsToDelete = await unitOfWork.Actions.GetByExpressionAsync(a => actionIds.Contains(a.Id));
+            foreach (var action in actionsToDelete)
+            {
+                unitOfWork.Actions.Delete(action);
+            }
+        });
+    }
+    
+    public Task MoveActionsToGroupAsync(IEnumerable<int> actionIds, int targetGroupId)
+    {
+        return ExecuteCommandAsync(async unitOfWork =>
+        {
+            var actionsToMove = await unitOfWork.Actions.GetByExpressionAsync(a => actionIds.Contains(a.Id));
+            var originalGroupIds = actionsToMove.Select(a => a.ActionGroupId).Distinct().ToList();
+
+            foreach (var action in actionsToMove)
+            {
+                action.ActionGroupId = targetGroupId;
+                unitOfWork.Actions.Update(action);
+            }
+            
+            // Re-number sort orders for all affected groups (the target group and all original groups).
+            var allAffectedGroupIds = originalGroupIds.Append(targetGroupId).Distinct();
+            foreach (var groupId in allAffectedGroupIds)
+            {
+                var groupActions = (await unitOfWork.Actions.GetByExpressionAsync(a => a.ActionGroupId == groupId))
+                    .OrderBy(a => a.SortOrder).ToList();
+
+                for (var i = 0; i < groupActions.Count; i++)
+                {
+                    groupActions[i].SortOrder = i;
+                    unitOfWork.Actions.Update(groupActions[i]);
+                }
+            }
         });
     }
 
@@ -167,6 +231,62 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
         });
     }
     
+    public Task DuplicateActionAsync(int actionId)
+    {
+        return ExecuteCommandAsync(async unitOfWork =>
+        {
+            var originalAction = await unitOfWork.Actions.GetByIdWithPlaceholdersAsync(actionId);
+            if (originalAction is null)
+            {
+                logger.LogWarning("Attempted to duplicate a non-existent action with ID {ActionId}.", actionId);
+                return;
+            }
+
+            var allActionNames = await unitOfWork.Actions.GetAllNamesAsync();
+            var newName = GetUniqueActionName($"{originalAction.Name} (Copy)", allActionNames);
+
+            var duplicateAction = new Action
+            {
+                Name = newName,
+                Prefix = originalAction.Prefix,
+                Instruction = originalAction.Instruction,
+                Icon = originalAction.Icon,
+                OutputMode = originalAction.OutputMode,
+                ExplainChanges = originalAction.ExplainChanges,
+                RequiresSelection = originalAction.RequiresSelection,
+                IsFavorite = originalAction.IsFavorite,
+                ApplicationContext = [..originalAction.ApplicationContext],
+                ActionGroupId = originalAction.ActionGroupId,
+                // SortOrder will be handled next
+                Placeholders = originalAction.Placeholders.Select(p => new ActionPlaceholder
+                {
+                    Name = p.Name,
+                    Label = p.Label,
+                    InputType = p.InputType,
+                    OptionsJson = p.OptionsJson,
+                    DefaultValue = p.DefaultValue,
+                    ValidationJson = p.ValidationJson,
+                    DisplayConditionJson = p.DisplayConditionJson
+                }).ToList()
+            };
+
+            // Insert the duplicate right after the original
+            var groupActions = await unitOfWork.Actions.GetByExpressionAsync(a => a.ActionGroupId == originalAction.ActionGroupId);
+            var sortedGroupActions = groupActions.OrderBy(a => a.SortOrder).ToList();
+            var originalIndex = sortedGroupActions.FindIndex(a => a.Id == originalAction.Id);
+            
+            duplicateAction.SortOrder = originalAction.SortOrder + 1;
+            await unitOfWork.Actions.AddAsync(duplicateAction);
+            
+            // Re-number the sort order for subsequent items in the group
+            for (var i = originalIndex + 1; i < sortedGroupActions.Count; i++)
+            {
+                sortedGroupActions[i].SortOrder++;
+                unitOfWork.Actions.Update(sortedGroupActions[i]);
+            }
+        });
+    }
+
     /// <summary>
     /// Toggles the favorite status of an action.
     /// </summary>
@@ -252,8 +372,54 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
                     Icon = a.Icon,
                     OutputMode = a.OutputMode,
                     ExplainChanges = a.ExplainChanges,
-                    ApplicationContext = a.ApplicationContext
+                    RequiresSelection = a.RequiresSelection,
+                    ApplicationContext = a.ApplicationContext,
+                    Placeholders = a.Placeholders.Select(p => new ActionPlaceholderDto
+                    {
+                        Name = p.Name,
+                        Label = p.Label,
+                        InputType = p.InputType,
+                        Options = JsonSerializer.Deserialize<List<string>>(p.OptionsJson) ?? [],
+                        DefaultValue = p.DefaultValue
+                    })
                 }));
+
+        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+        var json = JsonSerializer.Serialize(exportData, jsonOptions);
+        await File.WriteAllTextAsync(filePath, json);
+    }
+    
+    public async Task ExportActionsToJsonAsync(IEnumerable<int> actionIds, string filePath)
+    {
+        var actionsToExport = await ExecuteQueryAsync(unitOfWork => 
+            unitOfWork.Actions.GetByIdsWithDetailsAsync(actionIds));
+
+        if (actionsToExport.Count == 0) return;
+
+        var exportData = actionsToExport
+            .GroupBy(a => a.ActionGroup?.Name ?? "General")
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToDictionary(
+                    a => a.Name,
+                    a => new ActionDto
+                    {
+                        Prefix = a.Prefix,
+                        Instruction = a.Instruction,
+                        Icon = a.Icon,
+                        OutputMode = a.OutputMode,
+                        ExplainChanges = a.ExplainChanges,
+                        RequiresSelection = a.RequiresSelection,
+                        ApplicationContext = a.ApplicationContext,
+                        Placeholders = a.Placeholders.Select(p => new ActionPlaceholderDto
+                        {
+                            Name = p.Name,
+                            Label = p.Label,
+                            InputType = p.InputType,
+                            Options = JsonSerializer.Deserialize<List<string>>(p.OptionsJson) ?? [],
+                            DefaultValue = p.DefaultValue
+                        })
+                    }));
 
         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
         var json = JsonSerializer.Serialize(exportData, jsonOptions);
@@ -338,13 +504,31 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
                         continue; // Do nothing
                     
                     case ConflictResolutionType.Overwrite:
-                        var actionToUpdate = await unitOfWork.Actions.GetByIdAsync(conflict.ExistingAction.Id) ?? throw new InvalidOperationException("Action to overwrite not found during import.");
+                        var actionToUpdate = await unitOfWork.Actions.GetByIdWithPlaceholdersAsync(conflict.ExistingAction.Id) ?? throw new InvalidOperationException("Action to overwrite not found during import.");
+    
                         actionToUpdate.Prefix = conflict.ImportedActionDto.Prefix;
                         actionToUpdate.Instruction = conflict.ImportedActionDto.Instruction;
                         actionToUpdate.Icon = conflict.ImportedActionDto.Icon;
                         actionToUpdate.OutputMode = conflict.ImportedActionDto.OutputMode;
                         actionToUpdate.ExplainChanges = conflict.ImportedActionDto.ExplainChanges;
+                        actionToUpdate.RequiresSelection = conflict.ImportedActionDto.RequiresSelection;
                         actionToUpdate.ApplicationContext = conflict.ImportedActionDto.ApplicationContext.ToList();
+
+                        actionToUpdate.Placeholders.Clear();
+                        foreach (var p in conflict.ImportedActionDto.Placeholders)
+                        {
+                            actionToUpdate.Placeholders.Add(new ActionPlaceholder
+                            {
+                                Name = p.Name,
+                                Label = p.Label,
+                                InputType = p.InputType,
+                                OptionsJson = JsonSerializer.Serialize(p.Options),
+                                DefaultValue = p.DefaultValue,
+                                ValidationJson = p.ValidationJson,
+                                DisplayConditionJson = p.DisplayConditionJson
+                            });
+                        }
+                        
                         unitOfWork.Actions.Update(actionToUpdate);
                         break;
                         
@@ -410,10 +594,19 @@ public class ActionManagementService(IServiceScopeFactory scopeFactory, ILogger<
             Icon = dto.Icon,
             OutputMode = dto.OutputMode,
             ExplainChanges = dto.ExplainChanges,
+            RequiresSelection = dto.RequiresSelection,
             ApplicationContext = dto.ApplicationContext.ToList(),
             ActionGroupId = group.Id,
             ActionGroup = group,
-            SortOrder = actionSortOrder
+            SortOrder = actionSortOrder,
+            Placeholders = dto.Placeholders.Select(p => new ActionPlaceholder
+            {
+                Name = p.Name,
+                Label = p.Label,
+                InputType = p.InputType,
+                OptionsJson = JsonSerializer.Serialize(p.Options),
+                DefaultValue = p.DefaultValue
+            }).ToList()
         };
 
         await unitOfWork.Actions.AddAsync(newAction);

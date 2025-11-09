@@ -107,7 +107,7 @@ public class FloatingOrbService(
                 var executionRequest = new ActionExecutionRequest(selectedAction, OutputMode.Default, null);
                 
                 var orchestrationService = serviceProvider.GetRequiredService<ActionOrchestrationService>();
-                _ = Task.Run(() => orchestrationService.ProcessRequestAsync(executionRequest, droppedText));
+                _ = Task.Run(() => orchestrationService.ProcessRequestAsync(executionRequest, false, droppedText));
             }
         }
         catch (Exception ex)

@@ -12,7 +12,7 @@
                mc:Ignorable="d"
                x:DataType="vm:OnboardingViewModel"
                SizeToContent="Height"
-               Width="800" Height="600"
+               Width="1920" Height="1080"
                WindowState="FullScreen"
                WindowStartupLocation="CenterScreen"
                SystemDecorations="BorderOnly"
@@ -28,6 +28,9 @@
         </DataTemplate>
         <DataTemplate DataType="vmProviders:ModelLibraryViewModel">
             <providers:ModelLibraryView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:TemplateTutorialViewModel">
+            <onboarding:TemplateTutorialView />
         </DataTemplate>
         <DataTemplate DataType="vm:HotkeyTutorialViewModel">
             <onboarding:HotkeyTutorialView />
@@ -48,6 +51,35 @@
                         IsEnabled="{Binding IsNextButtonEnabled}"
                         IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static vm:OnboardingStep.ProviderChoice}}" />
             </DockPanel>
+        </Border>
+        
+        <!-- Progress Indicator -->
+        <Border DockPanel.Dock="Top" Padding="24,16" BorderBrush="{DynamicResource BorderColor}"
+                BorderThickness="0,0,0,1">
+            <ItemsControl ItemsSource="{Binding ProgressSteps}" HorizontalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:OnboardingProgressStep">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="24" Height="24" CornerRadius="12"
+                                    Background="{Binding IsCurrent, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|{DynamicResource PrimaryColor}|Transparent'}"
+                                    BorderBrush="{Binding IsCompleted, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|{DynamicResource SuccessColor}|{DynamicResource BorderColor}'}"
+                                    BorderThickness="2">
+                                <icons:SymbolIcon Symbol="Check" Size="16" IsVisible="{Binding IsCompleted}"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="Medium"
+                                       Foreground="{Binding IsCurrent, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|{DynamicResource PrimaryColor}|{DynamicResource MutedColor}'}" />
+                            <Separator Width="50" VerticalAlignment="Center" Margin="8,0"
+                                       IsVisible="{Binding Title, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter=Finish}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </Border>
 
         <!-- Main Content Area -->
@@ -87,24 +119,51 @@
                            Text="Choose a primary method. You can change this or add more later." />
 
                 <Grid ColumnDefinitions="*, *" ColumnSpacing="16" Margin="0, 16">
-                    <Button Grid.Column="0" Classes="Card" HorizontalAlignment="Stretch"
-                            Command="{Binding ChooseProviderPathCommand}" CommandParameter="Cloud">
-                        <StackPanel Spacing="8" TextBlock.TextAlignment="Center">
-                            <icons:SymbolIcon Symbol="Cloud" Size="32" HorizontalAlignment="Center" />
-                            <TextBlock Classes="h4" Text="Use the Cloud" />
-                            <TextBlock Classes="Small Muted" TextWrapping="Wrap"
-                                       Text="Connect to services like OpenAI, Groq, or Anthropic." />
-                        </StackPanel>
-                    </Button>
-                    <Button Grid.Column="1" Classes="Card" HorizontalAlignment="Stretch"
-                            Command="{Binding ChooseProviderPathCommand}" CommandParameter="Local">
-                        <StackPanel Spacing="8" TextBlock.TextAlignment="Center">
-                            <icons:SymbolIcon Symbol="Laptop" Size="32" HorizontalAlignment="Center" />
-                            <TextBlock Classes="h4" Text="Use a Local Model" />
-                            <TextBlock Classes="Small Muted" TextWrapping="Wrap"
-                                       Text="Run on your own hardware. Private and offline." />
-                        </StackPanel>
-                    </Button>
+                    <shadui:Card Grid.Column="0">
+                        <shadui:Card.Header>
+                            <StackPanel Spacing="8" TextBlock.TextAlignment="Center">
+                                <icons:SymbolIcon Symbol="Cloud" Size="32" HorizontalAlignment="Center" />
+                                <shadui:CardTitle>Use the Cloud</shadui:CardTitle>
+                            </StackPanel>
+                        </shadui:Card.Header>
+                        <shadui:Card.Content>
+                            <StackPanel Spacing="8">
+                                <TextBlock>✓ Highest quality &amp; speed</TextBlock>
+                                <TextBlock>✓ Access to latest models (GPT-4o, etc.)</TextBlock>
+                                <TextBlock>✗ Requires an API key &amp; internet</TextBlock>
+                                <TextBlock>✗ May have associated costs</TextBlock>
+                            </StackPanel>
+                        </shadui:Card.Content>
+                        <shadui:Card.Footer>
+                            <Button Classes="Primary" HorizontalAlignment="Stretch"
+                                    Command="{Binding ChooseProviderPathCommand}" CommandParameter="Cloud">
+                                Choose Cloud
+                            </Button>
+                        </shadui:Card.Footer>
+                    </shadui:Card>
+
+                    <shadui:Card Grid.Column="1">
+                        <shadui:Card.Header>
+                            <StackPanel Spacing="8" TextBlock.TextAlignment="Center">
+                                <icons:SymbolIcon Symbol="Laptop" Size="32" HorizontalAlignment="Center" />
+                                <shadui:CardTitle>Use a Local Model</shadui:CardTitle>
+                            </StackPanel>
+                        </shadui:Card.Header>
+                        <shadui:Card.Content>
+                            <StackPanel Spacing="8">
+                                <TextBlock>✓ Completely private &amp; offline</TextBlock>
+                                <TextBlock>✓ No cost per use</TextBlock>
+                                <TextBlock>✗ Requires powerful hardware (especially GPU)</TextBlock>
+                                <TextBlock>✗ Slower than top cloud models</TextBlock>
+                            </StackPanel>
+                        </shadui:Card.Content>
+                        <shadui:Card.Footer>
+                            <Button Classes="Primary" HorizontalAlignment="Stretch"
+                                    Command="{Binding ChooseProviderPathCommand}" CommandParameter="Local">
+                                Choose Local
+                            </Button>
+                        </shadui:Card.Footer>
+                    </shadui:Card>
                 </Grid>
             </StackPanel>
 
@@ -158,6 +217,26 @@
                     KeyDown="HotkeyBox_OnKeyDown"
                     GotFocus="HotkeyBox_OnGotFocus"
                     LostFocus="HotkeyBox_OnLostFocus" />
+            </StackPanel>
+            
+            <!-- Workspace Intro Step -->
+            <StackPanel Spacing="24" Margin="24" TextBlock.TextAlignment="Center"
+                        IsVisible="{Binding CurrentStep, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:OnboardingStep.WorkspaceIntro}}">
+                <TextBlock Classes="h3" Text="Work Better, Together"/>
+                <TextBlock Classes="p Muted" TextWrapping="Wrap" MaxWidth="500">
+                    Want to share your custom Actions and Provider settings with your team? ProseFlow's Workspace feature lets you sync everything to a shared folder (like Dropbox, a network drive, or a Git repository).
+                </TextBlock>
+                <!-- Simple diagram -->
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Center" ColumnSpacing="16">
+                    <icons:SymbolIcon Grid.Column="0" Symbol="User" Size="32"/>
+                    <icons:SymbolIcon Grid.Column="1" Symbol="ArrowRight" Size="24"/>
+                    <icons:SymbolIcon Grid.Column="2" Symbol="Folder" Size="48"/>
+                    <icons:SymbolIcon Grid.Column="3" Symbol="ArrowLeft" Size="24"/>
+                    <icons:SymbolIcon Grid.Column="4" Symbol="Users" Size="32"/>
+                </Grid>
+                 <TextBlock Classes="p" FontWeight="Medium" TextWrapping="Wrap" MaxWidth="500">
+                    Keeps your entire team's AI toolkit perfectly in sync.
+                </TextBlock>
             </StackPanel>
 
             <!-- Graduation Step -->

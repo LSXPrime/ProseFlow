@@ -1,10 +1,10 @@
-﻿using Avalonia.Controls;
-using Avalonia.Input;
+﻿using Avalonia.Input;
 using ProseFlow.UI.ViewModels.Dialogs;
+using Window = ShadUI.Window;
 
 namespace ProseFlow.UI.Views.Dialogs;
 
-public partial class InputDialogView : UserControl
+public partial class InputDialogView : Window
 {
     public InputDialogView()
     {

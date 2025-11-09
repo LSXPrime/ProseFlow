@@ -1,12 +1,16 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using ProseFlow.Application.Events;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using ProseFlow.Core.Models;
+using ProseFlow.UI.Services;
 using ProseFlow.UI.ViewModels.Actions;
 using ProseFlow.UI.ViewModels.Windows;
 using Window = ShadUI.Window;
@@ -15,9 +19,37 @@ namespace ProseFlow.UI.Views.Windows;
 
 public partial class FloatingActionMenuWindow : Window
 {
+    #region Fields
+
+    private ItemsControl? _currentListOptionsControl;
+    private INotifyPropertyChanged? _currentListStepViewModel;
+    
+    private bool _isPreventClose;
+
+    #endregion
+
     public FloatingActionMenuWindow()
     {
         InitializeComponent();
+    }
+
+    #region Window Lifecycle Handlers
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        if (DataContext is FloatingActionMenuViewModel oldVm)
+        {
+            oldVm.RequestClose -= OnRequestClose;
+            oldVm.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        if (DataContext is FloatingActionMenuViewModel newVm)
+        {
+            newVm.RequestClose += OnRequestClose;
+            newVm.PropertyChanged += OnViewModelPropertyChanged;
+        }
     }
 
     private void OnWindowOpened(object? sender, EventArgs e)
@@ -28,59 +60,167 @@ public partial class FloatingActionMenuWindow : Window
                 (int)(Screens.Primary.WorkingArea.Center.X - Width / 2),
                 (int)(Screens.Primary.WorkingArea.Center.Y - Height / 2 - 100)
             );
-        
 
         // Focus the search box for immediate typing
         Dispatcher.UIThread.Post(() =>
         {
             Activate();
             Focus();
-            SearchBox.Focus();
+            PrimaryInputBox.Focus();
         }, DispatcherPriority.Background);
-        
     }
+
+    private void Window_OnDeactivated(object? sender, EventArgs e)
+    {
+        if (_isPreventClose) return;
+        // When the user clicks away from the window, treat it as a cancellation and request closing.
+        if (DataContext is FloatingActionMenuViewModel vm)
+            vm.CancelSelectionCommand.Execute(null);
+        else // Fallback if the ViewModel is not available for some reason.
+            Close();
+    }
+
+    #endregion
+
+    #region Input Event Handlers
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not FloatingActionMenuViewModel vm) return;
+        
+        e.Handled = vm.HandleKeyDown(e.Key);
+    }
 
-        switch (e.Key)
+    private void ActionButton_OnPointerPressed(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: ActionItemViewModel actionVm } ||
+            DataContext is not FloatingActionMenuViewModel vm) return;
+
+        vm.SelectAndConfirmItemCommand.Execute(actionVm);
+    }
+
+    private void CustomInstructionButton_OnPointerPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FloatingActionMenuViewModel vm) return;
+        vm.ConfirmSelectionCommand.Execute(null);
+    }
+    
+    private void MultilineTextBox_OnKeyDownHandler(object? sender, KeyEventArgs e)
+    {
+        Console.WriteLine($"Key: {e.Key}, Modifiers: {e.KeyModifiers}");
+        // Check for the Ctrl+Enter combination
+        if (e is not { Key: Key.Enter, KeyModifiers: KeyModifiers.Control } ||
+            DataContext is not FloatingActionMenuViewModel vm || !vm.GoToNextStepCommand.CanExecute(null)) return;
+        
+        // Execute the command to proceed to the next step
+        vm.GoToNextStepCommand.Execute(null);
+            
+        // Mark the event as handled to prevent the TextBox from adding a newline
+        e.Handled = true;
+    }
+    
+    private void MultilineTextBox_OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is TextBox textBox)
         {
-            case Key.Escape:
-                vm.CancelSelectionCommand.Execute(null);
-                Close();
-                break;
-            case Key.Enter:
-                vm.ConfirmSelectionCommand.Execute(null);
-                e.Handled = true;
-                if (vm.ShouldClose) Close(); 
-                break;
-            case Key.Up:
-                vm.SelectPreviousItemCommand.Execute(null);
-                ScrollSelectedItemIntoView();
-                e.Handled = true;
-                break;
-            case Key.Down:
-                vm.SelectNextItemCommand.Execute(null);
-                ScrollSelectedItemIntoView();
-                e.Handled = true;
-                break;
-            case Key.Left:
-                vm.CollapseSelectedItemCommand.Execute(null);
-                e.Handled = true;
-                break;
-            case Key.Right:
-                vm.ExpandSelectedItemCommand.Execute(null);
-                e.Handled = true;
-                break;
+            // Subscribe to the KeyDown event during the tunneling phase.
+            textBox.AddHandler(KeyDownEvent, MultilineTextBox_OnKeyDownHandler, RoutingStrategies.Tunnel, handledEventsToo: true);
         }
     }
 
-    private void WindowBase_OnDeactivated(object? sender, EventArgs e)
+    private void MultilineTextBox_OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        AppEvents.OnFloatingMenuStateChanged(false);
+        if (sender is TextBox textBox)
+        {
+            // Clean up the event handler to prevent memory leaks.
+            textBox.RemoveHandler(KeyDownEvent, MultilineTextBox_OnKeyDownHandler);
+        }
+    }
+    
+    private void ListOptions_OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        _currentListOptionsControl = sender as ItemsControl;
+    }
+
+    private async void BrowseFileButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not FloatingActionMenuViewModel { CurrentStepViewModel: FilePickerStepViewModel filePickerVm }) return;
+        
+        _isPreventClose = true;
+        
+        var dialogService = Ioc.Default.GetRequiredService<IDialogService>();
+        var filePath = await dialogService.ShowOpenFileDialogAsync("Select File", "All Files", Constants.SupportedDocumentExtensions.Select(ex => $"*{ex}").ToArray());
+        if (!string.IsNullOrWhiteSpace(filePath)) await filePickerVm.ValidateAndSetFileAsync(filePath);
+
+        _isPreventClose = false;
+    }
+
+    #endregion
+
+    #region ViewModel Interaction
+
+    private void OnRequestClose()
+    {
+        if (_isPreventClose) return;
         Close();
     }
+    
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not FloatingActionMenuViewModel vm) return;
+
+        switch (e.PropertyName)
+        {
+            case nameof(FloatingActionMenuViewModel.SelectedItem):
+                ScrollSelectedItemIntoView();
+                break;
+
+            case nameof(FloatingActionMenuViewModel.CurrentStepViewModel):
+                if (_currentListStepViewModel != null)
+                    _currentListStepViewModel.PropertyChanged -= OnStepViewModelPropertyChanged;
+                
+                // Check if the new step is a list-based step (Choice or Boolean)
+                if (vm.CurrentStepViewModel is ChoiceStepViewModel newChoiceVm)
+                {
+                    _currentListStepViewModel = newChoiceVm;
+                    _currentListStepViewModel.PropertyChanged += OnStepViewModelPropertyChanged;
+                    FocusListItemButton(newChoiceVm.SelectedOption);
+                }
+                else if (vm.CurrentStepViewModel is BooleanStepViewModel newBoolVm)
+                {
+                    _currentListStepViewModel = newBoolVm;
+                    _currentListStepViewModel.PropertyChanged += OnStepViewModelPropertyChanged;
+                    FocusListItemButton(newBoolVm.SelectedOption);
+                }
+                else
+                {
+                    _currentListStepViewModel = null;
+                }
+                break;
+        }
+    }
+    
+    private void OnStepViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // When the selected option *within* a list-based step changes, update the UI focus.
+        if (e.PropertyName != nameof(ChoiceStepViewModel.SelectedOption)) return;
+        
+        object? selectedOption = null;
+        if (sender is ChoiceStepViewModel choiceVm)
+        {
+            selectedOption = choiceVm.SelectedOption;
+        }
+        else if (sender is BooleanStepViewModel boolVm)
+        {
+            selectedOption = boolVm.SelectedOption;
+        }
+        
+        FocusListItemButton(selectedOption);
+    }
+
+    #endregion
+
+    #region UI Manipulation Logic
 
     /// <summary>
     /// Finds the UI element corresponding to the currently selected item in the ViewModel
@@ -88,99 +228,41 @@ public partial class FloatingActionMenuWindow : Window
     /// </summary>
     private void ScrollSelectedItemIntoView()
     {
-        if (DataContext is not FloatingActionMenuViewModel vm || vm.SelectedItem is null) return;
-
-        // Use multiple dispatcher calls to ensure the visual tree is fully updated
+        if (DataContext is not FloatingActionMenuViewModel { SelectedItem: { } selectedItem }) return;
+        
+        // Post to the dispatcher to ensure the UI has updated after the data context change.
         Dispatcher.UIThread.Post(() =>
         {
-            Dispatcher.UIThread.Post(() =>
-            {
-                TryScrollSelectedItemIntoView(vm);
-            }, DispatcherPriority.Render);
-        }, DispatcherPriority.Render);
-    }
-
-    private void TryScrollSelectedItemIntoView(FloatingActionMenuViewModel vm)
-    {
-        try
-        {
-            // Find the control that represents the selected item
-            var selectedControl = this.GetVisualDescendants()
+            var container = this.GetVisualDescendants()
                 .OfType<Control>()
-                .FirstOrDefault(c => c.DataContext == vm.SelectedItem);
+                .FirstOrDefault(c => c.DataContext == selectedItem);
 
-            if (selectedControl == null)
-            {
-                var selectedContainer = this.GetVisualDescendants()
-                    .OfType<Control>()
-                    .FirstOrDefault(c => c.DataContext == vm.SelectedItem);
-                selectedContainer?.BringIntoView();
-                return;
-            }
-
-            var scrollViewer = this.FindControl<ScrollViewer>("ActionListScrollViewer");
-            if (scrollViewer == null) return;
-
-            // Force layout update to ensure accurate measurements
-            selectedControl.InvalidateMeasure();
-            selectedControl.InvalidateArrange();
-            
-            if (scrollViewer.Content is not Control scrollContent) return;
-
-            // Calculate control position relative to the scroll content
-            var controlPosition = selectedControl.TranslatePoint(new Point(0, 0), scrollContent);
-            if (!controlPosition.HasValue) return;
-
-            var controlTop = controlPosition.Value.Y;
-            var controlBottom = controlTop + selectedControl.Bounds.Height;
-            
-            var viewportHeight = scrollViewer.Viewport.Height;
-            var currentScrollTop = scrollViewer.Offset.Y;
-            var currentScrollBottom = currentScrollTop + viewportHeight;
-            
-            const double margin = 20;
-            
-            var newScrollY = currentScrollTop;
-            
-            // Check if control is above or below the visible area
-            if (controlTop < currentScrollTop + margin)
-                newScrollY = Math.Max(0, controlTop - margin);
-            else if (controlBottom > currentScrollBottom - margin) 
-                newScrollY = Math.Max(0, controlBottom - viewportHeight + margin);
-
-            // Only scroll if we need to
-            if (!(Math.Abs(newScrollY - currentScrollTop) > 1)) return;
-            
-            scrollViewer.Offset = scrollViewer.Offset.WithY(newScrollY);
-                
-            // For the last few items, ensure we scroll to the very bottom if needed
-            Dispatcher.UIThread.Post(() =>
-            {
-                var maxScrollY = Math.Max(0, scrollContent.Bounds.Height - viewportHeight);
-                if (newScrollY >= maxScrollY - 10) // Close to bottom
-                    scrollViewer.Offset = scrollViewer.Offset.WithY(maxScrollY);
-            }, DispatcherPriority.Background);
-        }
-        catch (Exception)
+            container?.BringIntoView();
+        }, DispatcherPriority.Background);
+    }
+    
+    /// <summary>
+    /// A generic method to focus the button corresponding to a selected option in a list-based step.
+    /// </summary>
+    /// <param name="optionVm">The ViewModel of the selected option (e.g., ChoiceOptionViewModel or BooleanOptionViewModel).</param>
+    private void FocusListItemButton(object? optionVm)
+    {
+        if (_currentListOptionsControl is null || optionVm is null) return;
+        
+        // Post to dispatcher to run after the UI elements for the choices have been created.
+        Dispatcher.UIThread.Post(() =>
         {
-            var selectedContainer = this.GetVisualDescendants()
-                .OfType<Control>()
-                .FirstOrDefault(c => c.DataContext == vm.SelectedItem);
-            selectedContainer?.BringIntoView();
-        }
-    }
+            var itemContainer = _currentListOptionsControl.ItemsPanelRoot?
+                .Children
+                .OfType<ContentPresenter>()
+                .FirstOrDefault(c => c.DataContext == optionVm);
 
-    private void ActionButton_OnPointerPressed(object? sender, RoutedEventArgs  e)
-    {
-        if (sender is not Button { DataContext: ActionItemViewModel action } || DataContext is not FloatingActionMenuViewModel vm) return;
-        vm.SelectAndConfirmItemCommand.Execute(action);
-        Close();
+            var button = itemContainer?.GetVisualChildren().FirstOrDefault() as Control;
+            button?.Focus(NavigationMethod.Directional);
+        }, DispatcherPriority.Background);
     }
-
-    private void CustomInstructionButton_OnPointerPressed(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not FloatingActionMenuViewModel vm) return;
-        vm.ConfirmSelectionCommand.Execute(null);
-        Close();
-    }
+    
+    #endregion
+    
+    
 }

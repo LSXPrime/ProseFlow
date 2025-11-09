@@ -5,10 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ProseFlow.UI.Utils;
 using ProseFlow.Application.Services;
+using ProseFlow.Core.Enums;
 using ProseFlow.Core.Models;
 using ProseFlow.UI.Services;
+using ProseFlow.UI.Utils;
+using Action = ProseFlow.Core.Models.Action;
 
 namespace ProseFlow.UI.ViewModels.History;
 
@@ -75,6 +77,27 @@ public partial class HistoryViewModel(
             EmptyStateMessage = "No search results found.";
         else
             EmptyStateMessage = "Your recent interactions will appear here.";
+    }
+
+    [RelayCommand]
+    private async Task SaveHistoryEntryAsActionAsync(HistoryEntry? entry)
+    {
+        if (entry is null || entry.ActionName != Constants.CustomInstructionActionName) return;
+
+        var newAction = new Action
+        {
+            Name = "",
+            Instruction = entry.Instruction,
+            Prefix = string.Empty,
+            Icon = nameof(IconSymbol.Workflow),
+            OutputMode = OutputMode.InPlace,
+            ExplainChanges = false,
+            RequiresSelection = false,
+            ActionGroupId = 1, // Default "General" group.
+            Placeholders = new List<ActionPlaceholder>()
+        };
+
+        await dialogService.ShowActionEditorDialogAsync(newAction);
     }
     
     [RelayCommand]

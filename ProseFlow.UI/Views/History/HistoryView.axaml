@@ -70,7 +70,20 @@
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <TextBlock
                                                 Classes="Small Muted"
+                                                VerticalAlignment="Center"
                                                 Text="{Binding Timestamp, StringFormat='{}{0:g}'}" />
+                                            
+                                            <Button
+                                                Classes="Outline"
+                                                ToolTip.Tip="Save this custom instruction as a new reusable Action"
+                                                Command="{Binding $parent[ItemsControl].((vm:HistoryViewModel)DataContext).SaveHistoryEntryAsActionCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding .}"
+                                                IsVisible="{Binding ActionName, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='=Custom Instruction|True|False'}">
+                                                <shadui:ButtonAssist.Icon>
+                                                    <icons:SymbolIcon Size="16" Symbol="Save" />
+                                                </shadui:ButtonAssist.Icon>
+                                                Save as Action...
+                                            </Button>
                                             
                                             <Button
                                                 Classes="Ghost Destructive"
@@ -127,6 +140,25 @@
                                                 </ScrollViewer>
                                             </Border>
                                         </StackPanel>
+                                        
+                                        <!-- Instructions Section -->
+                                        <Expander IsExpanded="False">
+                                            <Expander.Header>
+                                                <TextBlock Text="Instructions" FontWeight="Medium" />
+                                            </Expander.Header>
+                                            
+                                            <Border
+                                                Padding="12"
+                                                Background="{DynamicResource GhostColor}"
+                                                CornerRadius="{DynamicResource LgCornerRadius}">
+                                                <ScrollViewer MaxHeight="250">
+                                                    <SelectableTextBlock
+                                                        Classes="Small"
+                                                        Text="{Binding Instruction}"
+                                                        TextWrapping="Wrap" />
+                                                </ScrollViewer>
+                                            </Border>
+                                        </Expander>
                                     </StackPanel>
                                 </Expander>
                             </shadui:Card>

@@ -24,6 +24,12 @@ public record ActionDto
     [JsonPropertyName("explain_changes")]
     public bool ExplainChanges { get; init; }
 
+    [JsonPropertyName("requires_selection")]
+    public bool RequiresSelection { get; init; } = true;
+
     [JsonPropertyName("application_context")]
     public IEnumerable<string> ApplicationContext { get; init; } = [];
+
+    [JsonPropertyName("placeholders")]
+    public IEnumerable<ActionPlaceholderDto> Placeholders { get; init; } = [];
 }

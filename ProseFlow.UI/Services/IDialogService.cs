@@ -126,13 +126,12 @@ public interface IDialogService
     /// Shows a critical, blocking confirmation dialog. This is intended for startup errors (e.g., database corruption)
     /// where the main application window may not be fully initialized, and a simple, native dialog is required.
     /// </summary>
-    /// <param name="owner">The owner window for the modal dialog.</param>
     /// <param name="title">The title of the dialog window.</param>
     /// <param name="message">The message to display to the user.</param>
     /// <param name="confirmText">The text for the confirmation (positive) button.</param>
     /// <param name="cancelText">The text for the cancellation (negative) button.</param>
     /// <returns>A task that resolves to `true` if the user confirmed, and `false` otherwise.</returns>
-    Task<bool> ShowCriticalConfirmationDialogAsync(Window owner, string title, string message, string confirmText, string cancelText);
+    Task<bool> ShowCriticalConfirmationDialogAsync(string title, string message, string confirmText, string cancelText);
 
     /// <summary>
     /// Shows the dialog for managing the workspace connection.
