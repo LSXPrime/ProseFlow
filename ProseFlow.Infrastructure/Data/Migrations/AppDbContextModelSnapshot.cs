@@ -60,6 +60,9 @@ namespace ProseFlow.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("RequiresSelection")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
 
@@ -104,6 +107,52 @@ namespace ProseFlow.Infrastructure.Data.Migrations
                             Name = "General",
                             SortOrder = 0
                         });
+                });
+
+            modelBuilder.Entity("ProseFlow.Core.Models.ActionPlaceholder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ActionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultValue")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisplayConditionJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InputType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValidationJson")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionId");
+
+                    b.ToTable("ActionPlaceholders");
                 });
 
             modelBuilder.Entity("ProseFlow.Core.Models.CloudProviderConfiguration", b =>
@@ -234,6 +283,10 @@ namespace ProseFlow.Infrastructure.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("InputText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Instruction")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -446,6 +499,22 @@ namespace ProseFlow.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("ActionGroup");
+                });
+
+            modelBuilder.Entity("ProseFlow.Core.Models.ActionPlaceholder", b =>
+                {
+                    b.HasOne("ProseFlow.Core.Models.Action", "Action")
+                        .WithMany("Placeholders")
+                        .HasForeignKey("ActionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Action");
+                });
+
+            modelBuilder.Entity("ProseFlow.Core.Models.Action", b =>
+                {
+                    b.Navigation("Placeholders");
                 });
 
             modelBuilder.Entity("ProseFlow.Core.Models.ActionGroup", b =>

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Collections;
@@ -23,11 +24,21 @@ public partial class ActionsViewModel(
     public override IconSymbol Icon => IconSymbol.Workflow;
 
     private List<ActionGroup> _actionGroupsList = [];
-    private readonly ObservableCollection<Action> _allActions = [];
+    private readonly ObservableCollection<SelectableActionViewModel> _allActions = [];
 
     [ObservableProperty]
     private DataGridCollectionView? _groupedActions;
 
+    [ObservableProperty]
+    private int _selectedItemsCount;
+
+    [ObservableProperty]
+    private bool _isAnyItemSelected;
+
+    [ObservableProperty]
+    private bool _isAllSelected;
+
+    public ObservableCollection<ActionGroup> AvailableGroups { get; } = [];
     public bool HasActions => _allActions.Any();
 
     public override async Task OnNavigatedToAsync()
@@ -37,33 +48,58 @@ public partial class ActionsViewModel(
 
     private async Task LoadDataAsync()
     {
+        foreach (var selectableVm in _allActions) selectableVm.PropertyChanged -= OnItemSelectionChanged;
+        _allActions.Clear();
+        AvailableGroups.Clear();
+        
         var groups = await actionService.GetActionGroupsWithActionsAsync();
         _actionGroupsList = groups.OrderBy(g => g.SortOrder).ToList();
-
-        _allActions.Clear();
+        foreach (var group in _actionGroupsList) AvailableGroups.Add(group);
         
-        // Create a flat list of all actions, pre-sorted by the group's sort order, then the action's sort order.
         var sortedActions = _actionGroupsList
             .SelectMany(g => g.Actions)
             .OrderBy(a => a.ActionGroup!.SortOrder)
             .ThenBy(a => a.SortOrder);
 
-        foreach (var action in sortedActions) _allActions.Add(action);
+        foreach (var action in sortedActions)
+        {
+            var selectableVm = new SelectableActionViewModel(action);
+            selectableVm.PropertyChanged += OnItemSelectionChanged;
+            _allActions.Add(selectableVm);
+        }
 
-        // The DataGridCollectionView will respect the pre-sorted order when creating groups.
         var collectionView = new DataGridCollectionView(_allActions);
-        collectionView.GroupDescriptions.Add(new DataGridPathGroupDescription("ActionGroup.Name"));
+        collectionView.GroupDescriptions.Add(new DataGridPathGroupDescription("Action.ActionGroup.Name"));
         
         GroupedActions = collectionView;
+        UpdateSelectionState();
         OnPropertyChanged(nameof(HasActions));
     }
+
+    private void OnItemSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SelectableActionViewModel.IsSelected)) UpdateSelectionState();
+    }
+
+    private void UpdateSelectionState()
+    {
+        SelectedItemsCount = _allActions.Count(a => a.IsSelected);
+        IsAnyItemSelected = SelectedItemsCount > 0;
+    }
+    
+    partial void OnIsAllSelectedChanged(bool value)
+    {
+        foreach (var item in _allActions) item.IsSelected = value;
+    }
+
+    #region Single Action Commands
 
     [RelayCommand]
     private async Task AddActionAsync()
     {
         var newAction = new Action { Name = "New Action" };
-        var result = await dialogService.ShowActionEditorDialogAsync(newAction);
-        if (result) await LoadDataAsync();
+        await dialogService.ShowActionEditorDialogAsync(newAction);
+        await LoadDataAsync();
     }
     
     [RelayCommand]
@@ -82,11 +118,11 @@ public partial class ActionsViewModel(
     }
 
     [RelayCommand]
-    private async Task EditActionAsync(Action? action)
+    private async Task EditActionAsync(SelectableActionViewModel? actionVm)
     {
-        if (action is null) return;
-        var result = await dialogService.ShowActionEditorDialogAsync(action);
-        if (result) await LoadDataAsync();
+        if (actionVm is null) return;
+        await dialogService.ShowActionEditorDialogAsync(actionVm.Action);
+        await LoadDataAsync();
     }
     
     [RelayCommand]
@@ -112,14 +148,14 @@ public partial class ActionsViewModel(
     }
 
     [RelayCommand]
-    private void DeleteAction(Action? action)
+    private void DeleteAction(SelectableActionViewModel? actionVm)
     {
-        if (action is null) return;
+        if (actionVm is null) return;
         dialogService.ShowConfirmationDialogAsync(
             "Delete Action",
-            $"Are you sure you want to delete the action '{action.Name}'?", async () =>
+            $"Are you sure you want to delete the action '{actionVm.Action.Name}'?", async () =>
             {
-                await actionService.DeleteActionAsync(action.Id);
+                await actionService.DeleteActionAsync(actionVm.Action.Id);
                 await LoadDataAsync();
             });
     }
@@ -148,20 +184,130 @@ public partial class ActionsViewModel(
     }
     
     [RelayCommand]
-    private async Task ToggleFavoriteAsync(Action? action)
+    private async Task ToggleFavoriteAsync(SelectableActionViewModel? actionVm)
     {
-        if (action is null) return;
+        if (actionVm is null) return;
         
-        await actionService.ToggleFavoriteAsync(action.Id);
+        await actionService.ToggleFavoriteAsync(actionVm.Action.Id);
         
-        // Find the in-memory instance and update it to reflect the change immediately in the UI
-        var actionInList = _allActions.FirstOrDefault(a => a.Id == action.Id);
+        var actionInList = _allActions.FirstOrDefault(a => a.Action.Id == actionVm.Action.Id);
         if (actionInList is not null)
         {
-            actionInList.IsFavorite = !actionInList.IsFavorite;
+            actionInList.Action.IsFavorite = !actionInList.Action.IsFavorite;
             GroupedActions?.Refresh();
         }
     }
+    
+    [RelayCommand]
+    private async Task DuplicateActionAsync(SelectableActionViewModel? actionVm)
+    {
+        if (actionVm is null) return;
+        await actionService.DuplicateActionAsync(actionVm.Action.Id);
+        await LoadDataAsync();
+    }
+
+    private bool CanMoveAction(SelectableActionViewModel? actionVm, int direction)
+    {
+        if (actionVm is null) return false;
+        var groupActions = _allActions.Where(a => a.Action.ActionGroupId == actionVm.Action.ActionGroupId).ToList();
+        var index = groupActions.IndexOf(actionVm);
+        return direction switch
+        {
+            -1 => index > 0, // Can move up if not the first
+            1 => index < groupActions.Count - 1, // Can move down if not the last
+            _ => false
+        };
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanMoveUp))]
+    private async Task MoveActionUpAsync(SelectableActionViewModel? actionVm)
+    {
+        if (actionVm is null) return;
+        var groupActions = _allActions.Where(a => a.Action.ActionGroupId == actionVm.Action.ActionGroupId).ToList();
+        var currentIndex = groupActions.IndexOf(actionVm);
+        await actionService.UpdateActionOrderAsync(actionVm.Action.Id, actionVm.Action.ActionGroupId, currentIndex - 1);
+        await LoadDataAsync();
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanMoveDown))]
+    private async Task MoveActionDownAsync(SelectableActionViewModel? actionVm)
+    {
+        if (actionVm is null) return;
+        var groupActions = _allActions.Where(a => a.Action.ActionGroupId == actionVm.Action.ActionGroupId).ToList();
+        var currentIndex = groupActions.IndexOf(actionVm);
+        await actionService.UpdateActionOrderAsync(actionVm.Action.Id, actionVm.Action.ActionGroupId, currentIndex + 1);
+        await LoadDataAsync();
+    }
+
+    private bool CanMoveUp(SelectableActionViewModel? actionVm) => CanMoveAction(actionVm, -1);
+    private bool CanMoveDown(SelectableActionViewModel? actionVm) => CanMoveAction(actionVm, 1);
+
+    #endregion
+    
+    #region Bulk Action Commands
+
+    [RelayCommand]
+    private void ToggleGroupSelection(object? groupObject)
+    {
+        if (groupObject is not DataGridCollectionViewGroup group) return;
+
+        // If any item is not selected, select all, Otherwise (if all are already selected), deselect all.
+        var targetState = group.Items.Cast<SelectableActionViewModel>().Any(vm => !vm.IsSelected);
+
+        foreach (var item in group.Items)
+        {
+            if (item is SelectableActionViewModel actionVm) actionVm.IsSelected = targetState;
+        }
+    }
+    
+    [RelayCommand]
+    private void BulkDelete()
+    {
+        var selectedActionNames = _allActions.Where(a => a.IsSelected).Select(a => a.Action.Name);
+        dialogService.ShowConfirmationDialogAsync(
+            $"Delete {SelectedItemsCount} Actions?",
+            $"Are you sure you want to permanently delete the selected actions? This cannot be undone.\n\n- {string.Join("\n- ", selectedActionNames)}",
+            async () =>
+            {
+                var idsToDelete = _allActions.Where(a => a.IsSelected).Select(a => a.Action.Id).ToList();
+                await actionService.DeleteActionsAsync(idsToDelete);
+                await LoadDataAsync();
+            });
+    }
+    
+    [RelayCommand]
+    private async Task ConfirmBulkMoveAsync(ActionGroup targetGroup)
+    {
+        var idsToMove = _allActions.Where(a => a.IsSelected).Select(a => a.Action.Id).ToList();
+        await actionService.MoveActionsToGroupAsync(idsToMove, targetGroup.Id);
+        
+        await LoadDataAsync();
+    }
+    
+    [RelayCommand]
+    private async Task BulkExport()
+    {
+        if (!IsAnyItemSelected) return;
+
+        var selectedIds = _allActions.Where(a => a.IsSelected).Select(a => a.Action.Id).ToList();
+        var filePath = await dialogService.ShowSaveFileDialogAsync("Export Selected Actions", "proseflow_selection.json", "JSON files", "*.json");
+
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+
+        try
+        {
+            await actionService.ExportActionsToJsonAsync(selectedIds, filePath);
+            AppEvents.RequestNotification($"{selectedIds.Count} actions exported successfully.", NotificationType.Success);
+        }
+        catch (Exception)
+        {
+            AppEvents.RequestNotification("Failed to export selected actions.", NotificationType.Error);
+        }
+    }
+
+    #endregion
+
+    #region Reorder Command
 
     [RelayCommand]
     private async Task ReorderAsync((object dragged, object target) items)
@@ -169,9 +315,11 @@ public partial class ActionsViewModel(
         switch (items)
         {
             // Case 1: An Action is dropped onto another Action
-            case { dragged: Action draggedAction, target: Action targetAction }:
+            case { dragged: SelectableActionViewModel draggedVm, target: SelectableActionViewModel targetVm }:
             {
-                // Find the index of the target action within its group
+                var draggedAction = draggedVm.Action;
+                var targetAction = targetVm.Action;
+                
                 var group = _actionGroupsList.FirstOrDefault(g => g.Id == targetAction.ActionGroupId);
                 var newIndex = group?.Actions.OrderBy(a => a.SortOrder).ToList().FindIndex(a => a.Id == targetAction.Id) ?? 0;
                 
@@ -180,8 +328,9 @@ public partial class ActionsViewModel(
             }
 
             // Case 2: An Action is dropped onto a Group Header (string)
-            case { dragged: Action draggedAction, target: string targetGroupName }:
+            case { dragged: SelectableActionViewModel draggedVm, target: string targetGroupName }:
             {
+                var draggedAction = draggedVm.Action;
                 var targetGroup = _actionGroupsList.FirstOrDefault(g => g.Name == targetGroupName);
                 if (targetGroup is null || draggedAction.ActionGroupId == targetGroup.Id) return;
 
@@ -214,6 +363,10 @@ public partial class ActionsViewModel(
         await LoadDataAsync();
     }
     
+    #endregion
+    
+    #region Import/Export
+    
     [RelayCommand]
     private async Task ImportActionsAsync()
     {
@@ -236,18 +389,20 @@ public partial class ActionsViewModel(
     private async Task ExportActionsAsync()
     {
         var filePath =
-            await dialogService.ShowSaveFileDialogAsync("Export Actions", "proseflow_actions.json", "JSON files",
+            await dialogService.ShowSaveFileDialogAsync("Export All Actions", "proseflow_actions.json", "JSON files",
                 "*.json");
         if (string.IsNullOrWhiteSpace(filePath)) return;
 
         try
         {
             await actionService.ExportActionsToJsonAsync(filePath);
-            AppEvents.RequestNotification("Actions exported successfully.", NotificationType.Success);
+            AppEvents.RequestNotification("All actions exported successfully.", NotificationType.Success);
         }
         catch (Exception)
         {
             AppEvents.RequestNotification("Failed to export actions.", NotificationType.Error);
         }
     }
+    
+    #endregion
 }

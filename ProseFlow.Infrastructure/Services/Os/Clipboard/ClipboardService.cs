@@ -87,11 +87,8 @@ public sealed class ClipboardService(
 
     #region Platform-Specific Fallback Clipboard Handling
 
-    /// <summary>
-    /// Gets text from the clipboard using a multi-tiered fallback strategy.
-    /// An empty or whitespace result is considered a failure, triggering the next fallback.
-    /// </summary>
-    private async Task<string?> GetClipboardTextAsync()
+    /// <inheritdoc />
+    public async Task<string?> GetClipboardTextAsync()
     {
         return await TryGetAsync(avaloniaClipboardService.GetTextAsync,
             "Avalonia clipboard get failed or empty. Falling back.") 

@@ -1,28 +1,175 @@
-<shadui:Window
-    x:Class="ProseFlow.UI.Views.Windows.FloatingActionMenuWindow"
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
-    xmlns:vm="using:ProseFlow.UI.ViewModels.Windows"
-    xmlns:actions="clr-namespace:ProseFlow.UI.ViewModels.Actions"
-    xmlns:icons="clr-namespace:ProseFlow.UI.Controls.Icons"
-    xmlns:converters="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
-    x:DataType="vm:FloatingActionMenuViewModel"
+<shadui:Window Name="FloatingActionMenu"
+               x:Class="ProseFlow.UI.Views.Windows.FloatingActionMenuWindow"
+               xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:ProseFlow.UI.ViewModels.Windows"
+               xmlns:actions="clr-namespace:ProseFlow.UI.ViewModels.Actions"
+               xmlns:icons="clr-namespace:ProseFlow.UI.Controls.Icons"
+               xmlns:converters="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+               x:DataType="vm:FloatingActionMenuViewModel"
 
-    Width="500" SizeToContent="Height"
-    SystemDecorations="None" CanResize="False" ShowInTaskbar="False" Topmost="True"
-    WindowStartupLocation="Manual"
-    IsTitleBarVisible="False"
-    Background="Transparent"
-    ShowBottomBorder="False"
-    BorderBrush="Transparent"
-    BorderThickness="0"
-    ShowActivated="True"
+               Width="500" SizeToContent="Height"
+               SystemDecorations="None" CanResize="False" ShowInTaskbar="False" Topmost="True"
+               WindowStartupLocation="Manual"
+               IsTitleBarVisible="False"
+               Background="Transparent"
+               ShowBottomBorder="False"
+               BorderBrush="Transparent"
+               BorderThickness="0"
+               ShowActivated="True"
 
-    Opened="OnWindowOpened" KeyDown="OnWindowKeyDown" Deactivated="WindowBase_OnDeactivated">
+               Opened="OnWindowOpened" KeyDown="OnWindowKeyDown" Deactivated="Window_OnDeactivated">
+
+    <!-- DataTemplates define how to render each type of template step. -->
+    <Window.DataTemplates>
+
+        <!-- Renders a step with a list of choices. -->
+        <DataTemplate DataType="actions:ChoiceStepViewModel">
+            <ItemsControl ItemsSource="{Binding Options}" AttachedToVisualTree="ListOptions_OnAttachedToVisualTree">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="actions:ChoiceOptionViewModel">
+                        <Button Focusable="True"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="8" Margin="0,2"
+                                Classes="ListItem"
+                                Command="{Binding #FloatingActionMenu.((vm:FloatingActionMenuViewModel)DataContext).SelectChoiceAndProceedCommand, FallbackValue={x:Null}}"
+                                CommandParameter="{Binding .}"
+                                Classes.IsSelected="{Binding IsSelected}">
+                            <Button.Styles>
+                                <Style Selector="Button.ListItem">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="CornerRadius" Value="{DynamicResource MdCornerRadius}" />
+                                </Style>
+                                <Style Selector="Button.ListItem.IsSelected">
+                                    <Setter Property="Background" Value="{DynamicResource GhostHoverColor}" />
+                                </Style>
+                                <Style Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource GhostHoverColor}" />
+                                </Style>
+                            </Button.Styles>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <TextBlock Text="> " FontSize="20" VerticalAlignment="Center"
+                                           IsVisible="{Binding IsSelected}" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Value}" />
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DataTemplate>
+
+        <!-- Renders a single-line text input step. -->
+        <DataTemplate DataType="actions:TextStepViewModel">
+            <StackPanel Spacing="4" Margin="0,8">
+                <TextBox shadui:ElementAssist.FocusOnLoad="True" Text="{Binding UserInput, Mode=TwoWay}"
+                         shadui:ControlAssist.Hint="{Binding ErrorMessage}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Renders a multi-line text input step. -->
+        <DataTemplate DataType="actions:MultilineTextStepViewModel">
+            <StackPanel Spacing="4" Margin="0,8">
+                <TextBox shadui:ElementAssist.FocusOnLoad="True" VerticalAlignment="Stretch"
+                         Text="{Binding UserInput, Mode=TwoWay}"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         shadui:ControlAssist.Height="150"
+                         shadui:ControlAssist.Hint="{Binding ErrorMessage}"
+                         AttachedToVisualTree="MultilineTextBox_OnAttachedToVisualTree"
+                         DetachedFromVisualTree="MultilineTextBox_OnDetachedFromVisualTree" />
+        
+                <!-- Hint for Ctrl+Enter, only visible when there's no error message -->
+                <TextBlock Text="Press Ctrl+Enter to confirm" 
+                           Classes="Small Muted" 
+                           HorizontalAlignment="Right"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Renders a boolean (Yes/No button) input step. -->
+        <DataTemplate DataType="actions:BooleanStepViewModel">
+            <ItemsControl ItemsSource="{Binding Options}" AttachedToVisualTree="ListOptions_OnAttachedToVisualTree">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="actions:BooleanOptionViewModel">
+                        <Button Focusable="True"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="8" Margin="0,2"
+                                Classes="ListItem"
+                                Command="{Binding #FloatingActionMenu.((vm:FloatingActionMenuViewModel)DataContext).SelectAndConfirmBooleanCommand, FallbackValue={x:Null}}"
+                                CommandParameter="{Binding .}"
+                                Classes.IsSelected="{Binding IsSelected}">
+                            <Button.Styles>
+                                <Style Selector="Button.ListItem">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="CornerRadius" Value="{DynamicResource MdCornerRadius}" />
+                                </Style>
+                                <Style Selector="Button.ListItem.IsSelected">
+                                    <Setter Property="Background" Value="{DynamicResource GhostHoverColor}" />
+                                </Style>
+                                <Style Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource GhostHoverColor}" />
+                                </Style>
+                            </Button.Styles>
+                            <Grid ColumnDefinitions="Auto, *">
+                                <TextBlock Text="> " FontSize="20" VerticalAlignment="Center"
+                                           IsVisible="{Binding IsSelected}" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding DisplayText}" />
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DataTemplate>
+
+        <!-- Renders a numeric input step. -->
+        <DataTemplate DataType="actions:NumberStepViewModel">
+            <StackPanel Spacing="4" Margin="0,8">
+                <NumericUpDown shadui:ElementAssist.FocusOnLoad="True" shadui:ControlAssist.Label="{Binding Title}"
+                               Value="{Binding NumberValue, Mode=TwoWay}"
+                               shadui:ControlAssist.Hint="{Binding ErrorMessage}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Renders a date picker step. -->
+        <DataTemplate DataType="actions:DatePickerStepViewModel">
+            <StackPanel Spacing="4" Margin="0,8">
+                <DatePicker shadui:ElementAssist.FocusOnLoad="True" shadui:ControlAssist.Label="{Binding Title}"
+                            SelectedDate="{Binding DateValue, Mode=TwoWay}"
+                            shadui:ControlAssist.Hint="{Binding ErrorMessage}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Renders a file picker step. -->
+        <DataTemplate DataType="actions:FilePickerStepViewModel">
+            <StackPanel Spacing="4" Margin="0,8">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Grid.Column="0" IsReadOnly="False" Text="{Binding FilePath}"
+                             shadui:ControlAssist.Label="{Binding Title}" Watermark="Click Browse..." />
+                    <Button shadui:ElementAssist.FocusOnLoad="True" Grid.Column="1" VerticalAlignment="Bottom"
+                            Classes="Outline"
+                            Content="Browse..." x:Name="BrowseFileButton" Click="BrowseFileButton_OnClick" />
+                </Grid>
+                <TextBlock Classes="Small" Text="{Binding ErrorMessage}" IsVisible="{Binding !!ErrorMessage}" />
+            </StackPanel>
+        </DataTemplate>
+
+    </Window.DataTemplates>
 
     <Window.Styles>
-        <Style Selector="Button.ResultContainer.Default icons|SymbolIcon, Button.ResultContainer.Windowed icons|SymbolIcon">
+        <Style
+            Selector="Button.ResultContainer.Default icons|SymbolIcon, Button.ResultContainer.Windowed icons|SymbolIcon">
             <Setter Property="Symbol" Value="AppWindow" />
         </Style>
         <Style Selector="Button.ResultContainer.In-place icons|SymbolIcon">
@@ -35,21 +182,32 @@
 
     <shadui:Card Padding="0" HasShadow="True">
         <DockPanel>
-            <!-- Search Bar Area -->
-            <Border DockPanel.Dock="Top" Padding="12,12,12,8" IsVisible="{Binding !IsCustomInstructionActive}">
-                <TextBox
-                    Name="SearchBox"
-                    shadui:ElementAssist.FocusOnLoad="True"
-                    Classes="Clearable"
-                    Text="{Binding SearchText, Mode=TwoWay}"
-                    Watermark="Find an action...">
-                    <TextBox.InnerRightContent>
-                        <PathIcon
-                            Width="16"
-                            Data="{x:Static shadui:Icons.Search}"
-                            Opacity="0.75" />
-                    </TextBox.InnerRightContent>
-                </TextBox>
+            <!-- Header Area for Search or Template Step Info -->
+            <Border DockPanel.Dock="Top" Padding="12,12,12,8">
+                <Grid>
+                    <!-- Search/Prompt Bar -->
+                    <TextBox
+                        Name="PrimaryInputBox"
+                        shadui:ElementAssist.FocusOnLoad="True"
+                        Classes="Clearable"
+                        Text="{Binding SearchText, Mode=TwoWay}"
+                        Watermark="{Binding IsGenerationMode, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|Describe what you want to create...|Find an action...'}"
+                        IsVisible="{Binding CurrentMenuState, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MenuState.ActionSelection}}">
+                        <TextBox.InnerRightContent>
+                            <icons:SymbolIcon
+                                Symbol="{Binding IsGenerationMode, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|Sparkles|Search'}"
+                                Opacity="0.75" />
+                        </TextBox.InnerRightContent>
+                    </TextBox>
+
+                    <!-- Template Step Header -->
+                    <DockPanel
+                        IsVisible="{Binding CurrentMenuState, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MenuState.TemplateFilling}}">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding StepCounterText}" Classes="Small Muted"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding CurrentStepHeader}" FontWeight="Medium" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Grid>
             </Border>
 
             <!-- Footer Area -->
@@ -58,194 +216,241 @@
                 Padding="12,8"
                 BorderBrush="{DynamicResource BorderColor}"
                 BorderThickness="0,1,0,0">
-                <DockPanel>
-                    <Button
-                        DockPanel.Dock="Left"
-                        Classes="Ghost"
-                        Command="{Binding ToggleServiceTypeCommand}"
-                        ToolTip.Tip="Toggle AI Service Type for this run">
-                        <shadui:ButtonAssist.Icon>
-                            <icons:SymbolIcon Size="18" Symbol="Globe" />
-                        </shadui:ButtonAssist.Icon>
-                        <TextBlock Classes="Small" Text="{Binding CurrentServiceTypeName}" Margin="4,0,0,0" />
-                    </Button>
-                    <Button
-                        DockPanel.Dock="Left"
-                        Classes="Ghost ResultContainer"
-                        Command="{Binding ToggleResultContainerCommand}"
-                        ToolTip.Tip="Toggle the final form of the result"
-                        Classes.Default="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Default}"
-                        Classes.Windowed="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Windowed}"
-                        Classes.In-place="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=In-place}"
-                        Classes.Diff="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Diff}">
-                        <shadui:ButtonAssist.Icon>
-                            <icons:SymbolIcon Size="18" />
-                        </shadui:ButtonAssist.Icon>
-                        <TextBlock Classes="Small" Text="{Binding ResultContainer}" Margin="4,0,0,0" />
-                    </Button>
-                    <ToggleButton
-                        DockPanel.Dock="Left"
-                        Classes="Ghost"
-                        IsChecked="{Binding IsCustomInstructionActive}"
-                        ToolTip.Tip="Toggle between Action List and Custom Instruction">
-                        <StackPanel Orientation="Horizontal" Margin="8" Spacing="4">
-                            <icons:SymbolIcon Size="18" Symbol="Sparkles" />
-                            <TextBlock Classes="Small" Text="Custom Instruction" />
-                        </StackPanel>
-                    </ToggleButton>
-                    <Button
-                        HorizontalAlignment="Right"
-                        Classes="Ghost"
-                        Command="{Binding NavigateToPageCommand}"
-                        CommandParameter="Providers"
-                        ToolTip.Tip="Open Settings">
-                        <shadui:ButtonAssist.Icon>
-                            <icons:SymbolIcon Size="18" Symbol="Settings" />
-                        </shadui:ButtonAssist.Icon>
-                    </Button>
-                </DockPanel>
+                <Grid>
+                    <!-- Standard Footer for Action Selection -->
+                    <DockPanel
+                        IsVisible="{Binding CurrentMenuState, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MenuState.ActionSelection}}">
+                        <Button
+                            DockPanel.Dock="Left"
+                            Classes="Ghost"
+                            Command="{Binding ToggleServiceTypeCommand}"
+                            ToolTip.Tip="Toggle AI Service Type for this run">
+                            <shadui:ButtonAssist.Icon>
+                                <icons:SymbolIcon Size="18" Symbol="Globe" />
+                            </shadui:ButtonAssist.Icon>
+                            <TextBlock Classes="Small" Text="{Binding CurrentServiceTypeName}" Margin="4,0,0,0" />
+                        </Button>
+                        <Button
+                            DockPanel.Dock="Left"
+                            Classes="Ghost ResultContainer"
+                            Command="{Binding ToggleResultContainerCommand}"
+                            ToolTip.Tip="Toggle the final form of the result"
+                            Classes.Default="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Default}"
+                            Classes.Windowed="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Windowed}"
+                            Classes.In-place="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=In-place}"
+                            Classes.Diff="{Binding ResultContainer, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=Diff}">
+                            <shadui:ButtonAssist.Icon>
+                                <icons:SymbolIcon Size="18" />
+                            </shadui:ButtonAssist.Icon>
+                            <TextBlock Classes="Small" Text="{Binding ResultContainer}" Margin="4,0,0,0" />
+                        </Button>
+                        <ToggleButton
+                            DockPanel.Dock="Left"
+                            Classes="Ghost"
+                            IsVisible="{Binding !IsGenerationMode}"
+                            IsChecked="{Binding IsCustomInstructionActive}"
+                            ToolTip.Tip="Toggle between Action List and Custom Instruction">
+                            <StackPanel Orientation="Horizontal" Margin="8" Spacing="4">
+                                <icons:SymbolIcon Size="18" Symbol="Sparkles" />
+                                <TextBlock Classes="Small" Text="Custom Instruction" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <Button
+                            HorizontalAlignment="Right"
+                            Classes="Ghost"
+                            Command="{Binding NavigateToPageCommand}"
+                            CommandParameter="Providers"
+                            ToolTip.Tip="Open Settings">
+                            <shadui:ButtonAssist.Icon>
+                                <icons:SymbolIcon Size="18" Symbol="Settings" />
+                            </shadui:ButtonAssist.Icon>
+                        </Button>
+                    </DockPanel>
+
+                    <!-- Footer for Template Filling -->
+                    <DockPanel HorizontalSpacing="5"
+                               IsVisible="{Binding CurrentMenuState, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:MenuState.TemplateFilling}}">
+                        <Button DockPanel.Dock="Left" Classes="Outline" Command="{Binding GoToPreviousStepCommand}"
+                                IsVisible="{Binding CanGoBack}" Content="← Back" />
+
+                        <!-- "Next" button for intermediate steps or "Run" button for final step -->
+                        <Button DockPanel.Dock="Right" Classes="Primary" Command="{Binding GoToNextStepCommand}"
+                                Content="{Binding IsOnFinalStep, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|Run|Next →'}" />
+
+                    </DockPanel>
+                </Grid>
             </Border>
 
             <!-- Main Content Area -->
             <Grid>
-                <!-- Action List with ScrollViewer -->
-                <ScrollViewer
-                    Name="ActionListScrollViewer"
-                    IsVisible="{Binding !IsCustomInstructionActive}"
-                    MaxHeight="300"
-                    Padding="8,8"
-                    HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding ActionGroups}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Margin="8" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="actions:ActionGroupViewModel">
-                                <StackPanel Name="ActionGroup" Margin="0,4">
-                                    <!-- Group Header -->
-                                    <Border
-                                        Padding="8,8,8,4"
-                                        Margin="0,2"
-                                        CornerRadius="{DynamicResource MdCornerRadius}"
-                                        Classes.IsSelected="{Binding IsSelected}">
-                                        <Border.Styles>
-                                            <Style Selector="Border.IsSelected">
-                                                <Setter Property="Background" Value="{DynamicResource GhostHoverColor}" />
-                                            </Style>
-                                        </Border.Styles>
-                                        <DockPanel VerticalAlignment="Center">
-                                            <!-- Selection Indicator -->
-                                            <TextBlock
-                                                Text="{Binding IsExpanded, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|v |> '}"
-                                                FontSize="14" FontWeight="Bold" VerticalAlignment="Center"
-                                                IsVisible="{Binding IsSelected}" />
+                <!-- Container for both Action List and Template Form -->
+                <Panel Margin="8,8" MaxHeight="300">
 
-                                            <!-- Expander Icon -->
-                                            <TextBlock DockPanel.Dock="Left" Width="12"
-                                                       IsVisible="{Binding !IsSelected}"
-                                                       Text="{Binding IsExpanded, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|v |> '}"
-                                                       Classes="Small Muted" FontWeight="SemiBold"
-                                                       VerticalAlignment="Center" />
+                    <!-- Action List with ScrollViewer -->
+                    <ScrollViewer
+                        Name="ActionListScrollViewer"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.IsVisible>
+                            <MultiBinding Converter="{x:Static converters:BoolConverters.And}">
+                                <Binding Path="!IsCustomInstructionActive" />
+                                <Binding Path="CurrentMenuState" Converter="{x:Static ObjectConverters.Equal}"
+                                         ConverterParameter="{x:Static vm:MenuState.ActionSelection}" />
+                            </MultiBinding>
+                        </ScrollViewer.IsVisible>
+                        <ItemsControl ItemsSource="{Binding ActionGroups}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Margin="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="actions:ActionGroupViewModel">
+                                    <StackPanel Name="ActionGroup" Margin="0,4">
+                                        <!-- Group Header -->
+                                        <Border
+                                            Padding="8,8,8,4"
+                                            Margin="0,2"
+                                            CornerRadius="{DynamicResource MdCornerRadius}"
+                                            Classes.IsSelected="{Binding IsSelected}">
+                                            <Border.Styles>
+                                                <Style Selector="Border.IsSelected">
+                                                    <Setter Property="Background"
+                                                            Value="{DynamicResource GhostHoverColor}" />
+                                                </Style>
+                                            </Border.Styles>
+                                            <DockPanel VerticalAlignment="Center">
+                                                <!-- Selection Indicator -->
+                                                <TextBlock
+                                                    Text="{Binding IsExpanded, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|v |> '}"
+                                                    FontSize="14" FontWeight="Bold" VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsSelected}" />
 
-                                            <!-- Group Name -->
-                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                                <icons:SymbolIcon Symbol="Star" Size="12" Classes="Muted"
-                                                                  IsVisible="{Binding IsFavoritesGroup}"
-                                                                  VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Name}" Classes="Small Muted"
-                                                           FontWeight="SemiBold"
-                                                           Margin="4,0,0,0" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </DockPanel>
-                                    </Border>
+                                                <!-- Expander Icon -->
+                                                <TextBlock DockPanel.Dock="Left" Width="12"
+                                                           IsVisible="{Binding !IsSelected}"
+                                                           Text="{Binding IsExpanded, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|v |> '}"
+                                                           Classes="Small Muted" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
 
-                                    <!-- Actions within Group -->
-                                    <ItemsControl IsVisible="{Binding IsExpanded}" ItemsSource="{Binding Actions}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="actions:ActionItemViewModel">
-                                                <Button
-                                                    Name="ActionButton"
-                                                    HorizontalContentAlignment="Stretch"
-                                                    Padding="8"
-                                                    Margin="0,2"
-                                                    Classes="ListItem"
-                                                    IsVisible="True"
-                                                    ClickMode="Press"
-                                                    Click="ActionButton_OnPointerPressed"
-                                                    Classes.IsSelected="{Binding IsSelected}">
+                                                <!-- Group Name -->
+                                                <StackPanel Orientation="Horizontal" Spacing="4"
+                                                            VerticalAlignment="Center">
+                                                    <icons:SymbolIcon Symbol="Star" Size="12" Classes="Muted"
+                                                                      IsVisible="{Binding IsFavoritesGroup}"
+                                                                      VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" Classes="Small Muted"
+                                                               FontWeight="SemiBold"
+                                                               Margin="4,0,0,0" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </Border>
 
-                                                    <Button.Styles>
-                                                        <Style Selector="Button.ListItem">
-                                                            <Setter Property="Background" Value="Transparent" />
-                                                            <Setter Property="BorderThickness" Value="0" />
-                                                            <Setter Property="CornerRadius"
-                                                                    Value="{DynamicResource MdCornerRadius}" />
-                                                        </Style>
-                                                        <Style Selector="Button.ListItem.IsSelected">
-                                                            <Setter Property="Background"
-                                                                    Value="{DynamicResource GhostHoverColor}" />
-                                                        </Style>
-                                                        <Style
-                                                            Selector="Button.ListItem:pointerover /template/ ContentPresenter">
-                                                            <Setter Property="Background"
-                                                                    Value="{DynamicResource GhostHoverColor}" />
-                                                        </Style>
-                                                    </Button.Styles>
+                                        <!-- Actions within Group -->
+                                        <ItemsControl IsVisible="{Binding IsExpanded}" ItemsSource="{Binding Actions}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="actions:ActionItemViewModel">
+                                                    <Button
+                                                        Name="ActionButton"
+                                                        HorizontalContentAlignment="Stretch"
+                                                        Padding="8"
+                                                        Margin="0,2"
+                                                        Classes="ListItem"
+                                                        IsVisible="True"
+                                                        ClickMode="Press"
+                                                        Click="ActionButton_OnPointerPressed"
+                                                        Classes.IsSelected="{Binding IsSelected}">
 
-                                                    <!-- Action Data -->
-                                                    <Grid ColumnDefinitions="Auto, Auto, *, Auto"
-                                                          VerticalAlignment="Center">
-                                                        <TextBlock Text="> " FontSize="20" VerticalAlignment="Center"
-                                                                   IsVisible="{Binding IsSelected}" />
-                                                        <PathIcon
-                                                            Grid.Column="1"
-                                                            Width="18"
-                                                            Height="18"
-                                                            Margin="0,0,12,0"
-                                                            Foreground="{x:Null}"
-                                                            Data="{Binding Action.Icon, Converter={StaticResource StringToIconConverter}}">
-                                                            <PathIcon.Styles>
-                                                                <Style Selector="Path">
-                                                                    <Setter Property="Stroke"
-                                                                            Value="{DynamicResource PrimaryColor}" />
-                                                                    <Setter Property="StrokeThickness" Value="1" />
-                                                                </Style>
-                                                            </PathIcon.Styles>
-                                                        </PathIcon>
+                                                        <Button.Styles>
+                                                            <Style Selector="Button.ListItem">
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                                <Setter Property="BorderThickness" Value="0" />
+                                                                <Setter Property="CornerRadius"
+                                                                        Value="{DynamicResource MdCornerRadius}" />
+                                                            </Style>
+                                                            <Style Selector="Button.ListItem.IsSelected">
+                                                                <Setter Property="Background"
+                                                                        Value="{DynamicResource GhostHoverColor}" />
+                                                            </Style>
+                                                            <Style
+                                                                Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+                                                                <Setter Property="Background"
+                                                                        Value="{DynamicResource GhostHoverColor}" />
+                                                            </Style>
+                                                        </Button.Styles>
 
-                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
-                                                                    VerticalAlignment="Center">
-                                                            <icons:SymbolIcon Symbol="Star" Size="12" VerticalAlignment="Center">
-                                                                <icons:SymbolIcon.IsVisible>
-                                                                    <MultiBinding Converter="{x:Static converters:BoolConverters.And}">
-                                                                        <Binding Path="Action.IsFavorite" />
-                                                                        <Binding Path="#ActionGroup.((actions:ActionGroupViewModel)DataContext).Name" 
+                                                        <!-- Action Data -->
+                                                        <Grid ColumnDefinitions="Auto, Auto, *, Auto"
+                                                              VerticalAlignment="Center">
+                                                            <TextBlock Text="> " FontSize="20"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsSelected}" />
+                                                            <PathIcon
+                                                                Grid.Column="1"
+                                                                Width="18"
+                                                                Height="18"
+                                                                Margin="0,0,12,0"
+                                                                Foreground="{x:Null}"
+                                                                Data="{Binding Action.Icon, Converter={StaticResource StringToIconConverter}}">
+                                                                <PathIcon.Styles>
+                                                                    <Style Selector="Path">
+                                                                        <Setter Property="Stroke"
+                                                                                Value="{DynamicResource PrimaryColor}" />
+                                                                        <Setter Property="StrokeThickness" Value="1" />
+                                                                    </Style>
+                                                                </PathIcon.Styles>
+                                                            </PathIcon>
+
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                                        Spacing="4"
+                                                                        VerticalAlignment="Center">
+                                                                <icons:SymbolIcon Symbol="Star" Size="12"
+                                                                        VerticalAlignment="Center">
+                                                                    <icons:SymbolIcon.IsVisible>
+                                                                        <MultiBinding
+                                                                            Converter="{x:Static converters:BoolConverters.And}">
+                                                                            <Binding Path="Action.IsFavorite" />
+                                                                            <Binding
+                                                                                Path="#ActionGroup.((actions:ActionGroupViewModel)DataContext).Name"
                                                                                 Converter="{x:Static ObjectConverters.Equal}"
                                                                                 ConverterParameter="Search Results" />
-                                                                    </MultiBinding>
-                                                                </icons:SymbolIcon.IsVisible>
-                                                            </icons:SymbolIcon>
-                                                            <TextBlock VerticalAlignment="Center" Text="{Binding Action.Name}" />
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-                
+                                                                        </MultiBinding>
+                                                                    </icons:SymbolIcon.IsVisible>
+                                                                </icons:SymbolIcon>
+                                                                <TextBlock VerticalAlignment="Center"
+                                                                           Text="{Binding Action.Name}" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Template Filling Form - The ContentControl dynamically renders the current step -->
+                    <ScrollViewer
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.IsVisible>
+                            <MultiBinding Converter="{x:Static converters:BoolConverters.And}">
+                                <Binding Path="!IsCustomInstructionActive" />
+                                <Binding Path="CurrentMenuState" Converter="{x:Static ObjectConverters.Equal}"
+                                         ConverterParameter="{x:Static vm:MenuState.TemplateFilling}" />
+                            </MultiBinding>
+                        </ScrollViewer.IsVisible>
+                        <ContentControl Content="{Binding CurrentStepViewModel}" Margin="8" />
+                    </ScrollViewer>
+                </Panel>
+
                 <!-- Empty State Message -->
                 <StackPanel Spacing="16" VerticalAlignment="Center" Margin="32">
                     <StackPanel.IsVisible>
@@ -254,9 +459,11 @@
                             <Binding Path="HasNoActions" />
                         </MultiBinding>
                     </StackPanel.IsVisible>
-                    <icons:SymbolIcon Symbol="SearchX" Size="32" HorizontalAlignment="Center" Classes="Muted"/>
-                    <TextBlock Classes="p Muted" TextAlignment="Center" TextWrapping="Wrap" Text="No actions available for this application."/>
-                    <Button Classes="Outline" Content="Manage Actions" HorizontalAlignment="Center" Command="{Binding NavigateToPageCommand}" CommandParameter="Actions"/>
+                    <icons:SymbolIcon Symbol="SearchX" Size="32" HorizontalAlignment="Center" Classes="Muted" />
+                    <TextBlock Classes="p Muted" TextAlignment="Center" TextWrapping="Wrap"
+                               Text="No actions available for this application." />
+                    <Button Classes="Outline" Content="Manage Actions" HorizontalAlignment="Center"
+                            Command="{Binding NavigateToPageCommand}" CommandParameter="Actions" />
                 </StackPanel>
 
                 <!-- Custom Instruction Text Box -->

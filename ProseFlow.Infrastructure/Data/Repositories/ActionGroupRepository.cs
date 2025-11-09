@@ -15,6 +15,7 @@ public class ActionGroupRepository(AppDbContext context) : Repository<ActionGrou
     {
         return await Context.ActionGroups
             .Include(g => g.Actions.OrderBy(a => a.SortOrder))
+            .ThenInclude(a => a.Placeholders)
             .OrderBy(g => g.SortOrder)
             .ToListAsync();
     }

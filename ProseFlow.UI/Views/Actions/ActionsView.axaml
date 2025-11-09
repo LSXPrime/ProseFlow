@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:collections="using:Avalonia.Collections"
     xmlns:b="using:ProseFlow.UI.Behaviors"
-    xmlns:core="using:ProseFlow.Core.Models"
     xmlns:c="using:ProseFlow.UI.Converters"
     xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
     xmlns:vm="using:ProseFlow.UI.ViewModels.Actions"
@@ -22,7 +21,7 @@
                 <ControlTemplate x:DataType="collections:DataGridCollectionViewGroup">
                     <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BorderColor}"
                             BorderThickness="0,0,0,1">
-                        <DataGridFrozenGrid Name="PART_Root" ColumnDefinitions="Auto,Auto,*"
+                        <DataGridFrozenGrid Name="PART_Root" ColumnDefinitions="Auto,Auto,Auto,*"
                                             MinHeight="{TemplateBinding MinHeight}">
                             <!-- Indent Spacer -->
                             <Rectangle Name="PART_IndentSpacer" Grid.Column="0" />
@@ -31,9 +30,13 @@
                             <ToggleButton Name="PART_ExpanderButton" Grid.Column="1"
                                           Theme="{StaticResource DataGridRowGroupExpanderButtonTheme}"
                                           Margin="12,0,0,0" VerticalAlignment="Center" />
+                            
+                            <CheckBox Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0"
+                                      Command="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).ToggleGroupSelectionCommand, FallbackValue={x:Null}}"
+                                      CommandParameter="{Binding .}" />
 
                             <!-- Group Content: Name, Count, and Actions Dropdown -->
-                            <Grid Grid.Column="2" Margin="12,0" VerticalAlignment="Center" Cursor="SizeAll"
+                            <Grid Grid.Column="3" Margin="12,0" VerticalAlignment="Center" Cursor="SizeAll"
                                   ColumnDefinitions="*,Auto">
 
                                 <!-- Group Name and Item Count (aligned left) -->
@@ -87,43 +90,92 @@
         <!-- Main Content -->
         <ScrollViewer>
             <StackPanel Margin="48,0,48,24" Spacing="16">
-                <!-- Action Buttons -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Classes="Primary" Command="{Binding AddActionCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <icons:SymbolIcon Size="18" Symbol="Plus" />
-                            <TextBlock Text="New Action" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- Action Buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="Primary" Command="{Binding AddActionCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <icons:SymbolIcon Size="18" Symbol="Plus" />
+                                <TextBlock Text="New Action" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Primary" Command="{Binding AddGroupCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <icons:SymbolIcon Size="18" Symbol="Group" />
+                                <TextBlock Text="New Group" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Outline" Command="{Binding ImportActionsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <icons:SymbolIcon Size="18" Symbol="Download" />
+                                <TextBlock Text="Import from JSON" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="Outline" Command="{Binding ExportActionsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <icons:SymbolIcon Size="18" Symbol="Upload" />
+                                <TextBlock Text="Export All to JSON" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Bulk Actions Contextual Bar -->
+                    <Border Grid.Column="1" Padding="16" BorderBrush="{DynamicResource SecondaryColor}" BorderThickness="1"
+                            CornerRadius="{DynamicResource MdCornerRadius}"
+                            IsVisible="{Binding IsAnyItemSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedItemsCount, StringFormat={}{0} selected}"
+                                       FontWeight="Medium" VerticalAlignment="Center" />
+                            <Button Classes="Destructive" Command="{Binding BulkDeleteCommand}">
+                                <shadui:ButtonAssist.Icon>
+                                    <icons:SymbolIcon Size="16" Symbol="Trash2" />
+                                </shadui:ButtonAssist.Icon>
+                                Delete
+                            </Button>
+                            <Button Name="BulkMoveButton" Classes="Outline">
+                                <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                        <StackPanel Spacing="8" Margin="8" MinWidth="250">
+                                            <TextBlock Text="Move to Group" Classes="Small" FontWeight="Medium"/>
+                                            <ComboBox Name="BulkGroupMoveSelection" ItemsSource="{Binding AvailableGroups}"
+                                                      DisplayMemberBinding="{Binding Name}"
+                                                      PlaceholderText="Select destination group..."/>
+                                            <Button Classes="Primary" Content="Move"
+                                                    Command="{Binding ConfirmBulkMoveCommand}"
+                                                    CommandParameter="{Binding #BulkGroupMoveSelection.SelectedItem}"
+                                                    Click="BulkMoveConfirmButton_OnClick"
+                                                    IsEnabled="{Binding !!#BulkGroupMoveSelection.SelectedItem}">
+                                            </Button>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                                <shadui:ButtonAssist.Icon>
+                                    <icons:SymbolIcon Size="16" Symbol="FolderSymlink" />
+                                </shadui:ButtonAssist.Icon>
+                                Move to Group...
+                            </Button>
+                            <Button Classes="Outline" Command="{Binding BulkExportCommand}">
+                                <shadui:ButtonAssist.Icon>
+                                    <icons:SymbolIcon Size="16" Symbol="Upload" />
+                                </shadui:ButtonAssist.Icon>
+                                Export Selected...
+                            </Button>
                         </StackPanel>
-                    </Button>
-                    <Button Classes="Primary" Command="{Binding AddGroupCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <icons:SymbolIcon Size="18" Symbol="Group" />
-                            <TextBlock Text="New Group" />
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="Outline" Command="{Binding ImportActionsCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <icons:SymbolIcon Size="18" Symbol="Download" />
-                            <TextBlock Text="Import from JSON" />
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="Outline" Command="{Binding ExportActionsCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <icons:SymbolIcon Size="18" Symbol="Upload" />
-                            <TextBlock Text="Export to JSON" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                    </Border>
+                </Grid>
+
 
                 <!-- Groups and Actions List -->
                 <Panel>
                     <!-- Empty State Message -->
-                    <StackPanel Spacing="16" Margin="0,100" HorizontalAlignment="Stretch" VerticalAlignment="Center" IsVisible="{Binding !HasActions}">
+                    <StackPanel Spacing="16" Margin="0,100" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                IsVisible="{Binding !HasActions}">
                         <icons:SymbolIcon Symbol="Workflow" Size="64" HorizontalAlignment="Center" />
-                        <TextBlock Classes="h4 Muted" Text="No Actions Created Yet" HorizontalAlignment="Center"/>
-                        <TextBlock Classes="p Muted" HorizontalAlignment="Center" VerticalAlignment="Stretch" Text="Click 'New Action' to create your first command, or import a starter pack in Settings." />
+                        <TextBlock Classes="h4 Muted" Text="No Actions Created Yet" HorizontalAlignment="Center" />
+                        <TextBlock Classes="p Muted" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                   Text="Click 'New Action' to create your first command, or import a starter pack in Settings." />
                     </StackPanel>
-                    
+
                     <DataGrid
                         IsVisible="{Binding HasActions}"
                         b:AdvancedDataGridDropBehavior.Command="{Binding ReorderCommand}"
@@ -134,27 +186,41 @@
                         RowGroupTheme="{StaticResource ActionGroupHeaderTheme}">
 
                         <DataGrid.Columns>
+                            <!-- Checkbox Column -->
+                            <DataGridTemplateColumn Width="60">
+                                <DataGridTemplateColumn.Header>
+                                    <CheckBox
+                                        IsChecked="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).IsAllSelected, Mode=TwoWay}" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="vm:SelectableActionViewModel">
+                                        <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
                             <!-- Favorite Column -->
                             <DataGridTemplateColumn Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="core:Action">
+                                    <DataTemplate DataType="vm:SelectableActionViewModel">
                                         <Button Classes="Ghost" Width="40"
                                                 Command="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).ToggleFavoriteCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
                                                 ToolTip.Tip="Toggle Favorite">
                                             <icons:SymbolIcon Size="18"
-                                                              Symbol="{Binding IsFavorite, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|Star|StarOff'}" />
+                                                              Symbol="{Binding Action.IsFavorite, Converter={StaticResource ConditionCheckConverter}, ConverterParameter='true|Star|StarOff'}" />
                                         </Button>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            
+
                             <!-- Drag Handle Column -->
                             <DataGridTemplateColumn Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <icons:SymbolIcon Size="18" Symbol="MoveVertical"
-                                                    ToolTip.Tip="Drag and drop to reorder actions." />
+                                                          ToolTip.Tip="Drag and drop to reorder actions." />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -162,18 +228,19 @@
                             <!-- Name Column (with Icon) -->
                             <DataGridTemplateColumn Width="*" Header="Name">
                                 <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="core:Action">
+                                    <DataTemplate DataType="vm:SelectableActionViewModel">
                                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <PathIcon Width="16" Height="16" Foreground="{x:Null}"
-                                                      Data="{Binding Icon, Converter={StaticResource StringToIconConverter}}">
+                                                      Data="{Binding Action.Icon, Converter={StaticResource StringToIconConverter}}">
                                                 <PathIcon.Styles>
                                                     <Style Selector="Path">
-                                                        <Setter Property="Stroke" Value="{DynamicResource PrimaryColor}" />
+                                                        <Setter Property="Stroke"
+                                                                Value="{DynamicResource PrimaryColor}" />
                                                         <Setter Property="StrokeThickness" Value="1" />
                                                     </Style>
                                                 </PathIcon.Styles>
                                             </PathIcon>
-                                            <TextBlock Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding Action.Name}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -181,13 +248,13 @@
 
                             <!-- Default Output Column -->
                             <DataGridTextColumn Width="150"
-                                                Binding="{Binding OutputMode, DataType=core:Action}"
+                                                Binding="{Binding Action.OutputMode, DataType=vm:SelectableActionViewModel}"
                                                 Header="Default Output" />
 
                             <!-- Actions Column (with Dropdown) -->
                             <DataGridTemplateColumn Width="Auto" Header="Options">
                                 <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
+                                    <DataTemplate DataType="vm:SelectableActionViewModel">
                                         <shadui:SimpleDropdown HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                Classes="Ghost" PopupPlacement="BottomEdgeAlignedLeft"
                                                                PopupWidth="150">
@@ -201,6 +268,31 @@
                                                     <icons:SymbolIcon Size="18" Symbol="Pen" />
                                                 </shadui:ButtonAssist.Icon>
                                                 Edit
+                                            </Button>
+                                            <Button
+                                                Command="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).DuplicateActionCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding .}">
+                                                <shadui:ButtonAssist.Icon>
+                                                    <icons:SymbolIcon Size="18" Symbol="Copy" />
+                                                </shadui:ButtonAssist.Icon>
+                                                Duplicate
+                                            </Button>
+                                            <Separator />
+                                            <Button
+                                                Command="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).MoveActionUpCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding .}">
+                                                <shadui:ButtonAssist.Icon>
+                                                    <icons:SymbolIcon Size="18" Symbol="ArrowUp" />
+                                                </shadui:ButtonAssist.Icon>
+                                                Move Up
+                                            </Button>
+                                            <Button
+                                                Command="{Binding $parent[UserControl].((vm:ActionsViewModel)DataContext).MoveActionDownCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding .}">
+                                                <shadui:ButtonAssist.Icon>
+                                                    <icons:SymbolIcon Size="18" Symbol="ArrowDown" />
+                                                </shadui:ButtonAssist.Icon>
+                                                Move Down
                                             </Button>
                                             <Separator />
                                             <Button Classes="Destructive"

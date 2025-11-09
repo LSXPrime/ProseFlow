@@ -1,0 +1,42 @@
+﻿<UserControl x:Class="ProseFlow.UI.Views.Onboarding.TemplateTutorialView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:ProseFlow.UI.ViewModels.Onboarding"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+             mc:Ignorable="d" Padding="64"
+             x:DataType="vm:TemplateTutorialViewModel">
+    <StackPanel Spacing="16" TextBlock.TextAlignment="Center">
+        <TextBlock Classes="h3" Text="Power-Up Your Actions with Templates" />
+        <TextBlock Classes="p Muted" TextWrapping="Wrap">
+            Some actions can ask you for more information before running. We call these 'Placeholders', and they turn simple prompts into powerful, reusable tools.
+        </TextBlock>
+
+        <!-- Read-only template example -->
+        <Border Classes="Code" Padding="12" Margin="0,8" CornerRadius="{DynamicResource MdCornerRadius}">
+            <TextBlock Text="Write an email to [Recipient] about [Topic] in a [Tone] tone."
+                       TextAlignment="Left" />
+        </Border>
+
+        <!-- Interactive Form -->
+        <StackPanel Spacing="12" TextBlock.TextAlignment="Left">
+            <TextBox shadui:ControlAssist.Label="Recipient" Text="{Binding Recipient}" />
+            <TextBox shadui:ControlAssist.Label="Topic" Text="{Binding Topic}" />
+            <ComboBox shadui:ControlAssist.Label="Tone"
+                      ItemsSource="{Binding AvailableTones}"
+                      SelectedItem="{Binding SelectedTone}" />
+        </StackPanel>
+
+        <Button Classes="Primary" Content="Simulate Run"
+                HorizontalAlignment="Center"
+                Command="{Binding SimulateRunCommand}" />
+
+        <!-- Simulated Output -->
+        <Border Classes="Code" Padding="12" Margin="0,8"
+                IsVisible="{Binding IsOutputVisible}"
+                CornerRadius="{DynamicResource MdCornerRadius}">
+            <TextBlock Text="{Binding SimulatedOutput}" TextAlignment="Left" TextWrapping="Wrap" />
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -10,7 +10,7 @@
 [![Build Status](https://github.com/LSXPrime/ProseFlow/actions/workflows/release.yml/badge.svg)](https://github.com/LSXPrime/ProseFlow/actions/workflows/release.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/8.0) [![Release](https://img.shields.io/github/v/release/LSXPrime/ProseFlow?color=black)](https://github.com/LSXPrime/ProseFlow/releases) [![ProseFlow-Actions-v1 Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Datasets-yellow)](https://huggingface.co/datasets/LSXPrime/ProseFlow-Actions-v1)
 
 ProseFlow is a cross-platform desktop application that integrates powerful AI text processing into your daily workflow.
-With a simple hotkey, you can access a menu of customizable AI actions to proofread, summarize, refactor, or transform
+With a simple hotkey, you can access a menu of customizable AI actions to proofread, summarize, generate, or transform
 text in *any* application—be it your code editor, browser, or word processor.
 
 
@@ -32,18 +32,26 @@ Its unique hybrid engine allows you to seamlessly switch between the world's bes
 <table>
   <tr>
     <td align="center"><strong>Floating Action Menu</strong></td>
-    <td align="center"><strong>Comprehensive Dashboard</strong></td>
+    <td align="center"><strong>Templated Action Menu</strong></td>
   </tr>
   <tr>
     <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-floating-action-menu.png" alt="Floating Action Menu"></td>
-    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-dashboard.png" alt="Dashboard"></td>
+    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-template-menu.gif" alt="Templated Action Menu"></td>
   </tr>
   <tr>
     <td align="center"><strong>Action Management</strong></td>
-    <td align="center"><strong>Local Model Library</strong></td>
+    <td align="center"><strong>Advanced Action Editor</strong></td>
   </tr>
   <tr>
     <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-actions.png" alt="Action Management"></td>
+    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-action-editor.gif" alt="Advanced Action Editor"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Comprehensive Dashboard</strong></td>
+    <td align="center"><strong>Local Model Library</strong></td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-dashboard.png" alt="Dashboard"></td>
     <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-local-model-library.png" alt="Local Model Library"></td>
   </tr>
   <tr>
@@ -51,8 +59,8 @@ Its unique hybrid engine allows you to seamlessly switch between the world's bes
     <td align="center"><strong>Workspace Sync Management</strong></td>
   </tr>
   <tr>
-    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-workspace-sync.png" alt="Workspace Sync Management"></td>
     <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-arc-menu.png" alt="Floating Orb & Arc Menu"></td>
+    <td><img src="https://raw.githubusercontent.com/LSXPrime/_resources/refs/heads/main/ProseFlow/screenshot-workspace-sync.png" alt="Workspace Sync Management"></td>
   </tr>
 </table>
 
@@ -87,6 +95,7 @@ ProseFlow is packed with features designed for power, privacy, and productivity.
 #### 🚀 Core Workflow & UI
 
 *   **Global Hotkey Activation:** Access ProseFlow from **any application** with a customizable system-wide hotkey.
+*   **Generation Mode:** Create content from scratch. When no text is selected, the menu adapts to show generation-focused actions.
 *   **Floating Action Orb:** A persistent on-screen button providing visual feedback on background tasks and a new way to trigger actions.
 *   **Radial Arc Menu:** Drag and drop text onto the orb to instantly bring up a context-aware radial menu of your favorite actions.
 *   **Floating Action Menu:** An elegant, **searchable menu** of your AI actions appears right where you need it.
@@ -94,6 +103,18 @@ ProseFlow is packed with features designed for power, privacy, and productivity.
 *   **Flexible Output Modes:** Choose to have results instantly **replace** your text, open in an **interactive window** for review, or view as a side-by-side **diff**.
 *   **Iterative Refinement:** **Conversationally refine** AI output in the result window until it's perfect.
 *   **Context-Aware Actions:** Configure actions to only appear when you're in **specific applications**.
+
+#### 🛠️ Customization & Management
+
+*   **Templated Actions:** Create dynamic, multi-step actions with **placeholders** (e.g., `Write an email to [Recipient]`). The menu will prompt you for input at runtime.
+*   **Advanced Placeholders:** Supports multiple input types (Text, Choice, Boolean, File Picker), validation rules, conditional logic, and smart defaults (`{clipboard}`, `{date}`).
+*   **Powerful Action Editor:** A completely redesigned editor for building and managing complex templated actions.
+*   **Bulk Action Management:** Select multiple actions to **delete, move, or export** them all at once.
+*   **Duplicate & Reorder Actions:** Easily clone existing actions or move them up/down within their group.
+*   **Action Groups:** Organize your actions into logical groups with a **drag-and-drop interface**.
+*   **Action Favorites:** Mark your most-used actions as favorites for prioritized access.
+*   **Import & Export:** **Share your action sets** with others or back up your configuration to a JSON file.
+*   **Action Presets:** Get started quickly by importing **curated sets of actions** for common tasks like writing, coding, and more.
 
 #### 🤝 Workspace & Collaboration
 
@@ -111,22 +132,14 @@ ProseFlow is packed with features designed for power, privacy, and productivity.
 *   **Secure Credential Storage:** API keys are **always encrypted** and stored securely on your local machine.
 *   **Advanced Local Model Control:** Fine-tune performance with specific GPU selection, thread count, and advanced memory options.
 
-#### 🛠️ Customization & Management
-
-*   **Custom AI Actions:** Create **reusable AI instructions** with unique names, icons, and system prompts.
-*   **Action Favorites:** Mark your most-used actions as favorites for prioritized access in the Arc Menu and main action menu.
-*   **Action Groups:** Organize your actions into logical groups with a **drag-and-drop interface**.
-*   **Import & Export:** **Share your action sets** with others or back up your configuration to a JSON file.
-*   **Action Presets:** Get started quickly by importing **curated sets of actions** for common tasks like writing, coding, and more.
-
 #### 📊 Dashboard & Analytics
 
 *   **Usage Dashboard:** Visualize your **token usage over time** for both cloud and local models.
-*   **Live Task Monitoring:** A new "Active Processes" widget shows all ongoing AI tasks and allows you to **cancel them**.
+*   **Live Task Monitoring:** An "Active Processes" widget shows all ongoing AI tasks and allows you to **cancel them**.
 *   **Live Application Log:** A real-time log console in the dashboard for advanced diagnostics and troubleshooting.
 *   **Performance Monitoring:** Track **provider latency** and **tokens/second** to optimize your setup.
 *   **Live Hardware Monitor:** See real-time **CPU, GPU, RAM, and VRAM usage** when running local models.
-*   **Interaction History:** Review a **detailed log** of all your past AI operations.
+*   **Interaction History:** Review a **detailed log** of all your past AI operations, and even save custom instructions as new actions.
 
 #### 💻 Platform Integration
 
@@ -178,17 +191,20 @@ Due to Apple's security policies, you will need to perform a few extra steps to 
 
 ProseFlow offers multiple ways to process text, designed to be fast and intuitive:
 
-1.  **Hotkey Method (Primary):**
+1.  **Transforming Selected Text:**
     *   **Select Text:** Highlight any text in any application.
     *   **Press Hotkey:** Press your configured Action Menu hotkey (default is `Ctrl+J`).
     *   **Choose an Action:** The floating menu will appear. Use your mouse or arrow keys to select an action and press `Enter`.
-2.  **Drag-and-Drop Method:**
+2.  **Generating New Content:**
+    *   **Press Hotkey:** With no text selected, press your Action Menu hotkey.
+    *   **Choose an Action:** Select a generation action (e.g., "Write an Email").
+    *   **Fill the Form:** Complete the steps in the menu.
+3.  **Drag-and-Drop Method:**
     *   **Drag Text:** Select and drag text from any application.
     *   **Drop on Orb:** Drop the text onto the Floating Action Orb.
     *   **Choose an Action:** The radial Arc Menu will appear around the orb. Click an action to process the text.
-3.  **Results:**
-    *   For quick edits (like "Proofread"), your selected text will be replaced instantly.
-    *   For longer content (like "Explain Code"), a result window will appear with the generated text.
+4.  **Results:**
+    *   Depending on the action's configuration, your text will be replaced instantly, or a result window (standard, or a side-by-side diff) will appear for review.
 
 ---
 
@@ -254,6 +270,11 @@ ProseFlow is actively developed and tested on **Windows and Linux (via WSL)**. D
 
 You can directly support ProseFlow and help transform it into a truly professional, cross-platform tool through:
 
+*   **Ko-fi:** For simple one-time donations or flexible recurring support.
+
+    [![ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/lsxprime)
+
+
 *   **AirTM:** For simple one-time donations with various payment options like Direct Bank Transfer (ACH), Debit / Credit Card via Moonpay, Stablecoins, and more than 500 banks and e-wallets.
 
     [Donate using AirTM](https://airtm.me/lsxprime)
@@ -299,7 +320,7 @@ You can directly support ProseFlow and help transform it into a truly profession
 ### 🛠️ Technology Stack
 
 *   **UI Framework:** [Avalonia UI](https://avaloniaui.net/)
-*   **UI Components:** [ShadUI.Avalonia](https://github.com/shadcn-ui/avalonia)
+*   **UI Components:** [ShadUI](https://github.com/accntech/shad-ui)
 *   **MVVM Framework:** [CommunityToolkit.Mvvm](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/)
 *   **Database:** [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) with SQLite
 *   **Local LLM Engine:** [LLamaSharp](https://github.com/SciSharp/LLamaSharp)

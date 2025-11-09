@@ -50,11 +50,16 @@ public class ActionOrchestrationService : IDisposable
         AppEvents.OnFloatingMenuStateChanged(true);
         try
         {
+            await Task.Delay(200);
+            var selectedText = await _clipboardService.GetSelectedTextAsync();
+            var isGenerationMode = string.IsNullOrWhiteSpace(selectedText);
+
             var activeAppContext = await _activeWindowService.GetActiveWindowProcessNameAsync();
             var allActions = await ExecuteQueryAsync(unitOfWork => unitOfWork.Actions.GetAllOrderedAsync());
 
-            // Filter actions based on context, then sort them with favorites first.
+            // Filter actions based on context and mode (generation vs. transformation).
             var availableActions = allActions
+                .Where(a => !isGenerationMode || !a.RequiresSelection)
                 .Where(a => a.ApplicationContext.Count == 0 ||
                             a.ApplicationContext.Contains(activeAppContext, StringComparer.OrdinalIgnoreCase))
                 .OrderByDescending(a => a.IsFavorite)
@@ -62,9 +67,9 @@ public class ActionOrchestrationService : IDisposable
                 .ThenBy(a => a.SortOrder)
                 .ToList();
 
-            var request = await AppEvents.RequestFloatingMenuAsync(availableActions, activeAppContext);
+            var request = await AppEvents.RequestFloatingMenuAsync(availableActions, activeAppContext, isGenerationMode);
             if (request is not null)
-                await ProcessRequestAsync(request);
+                await ProcessRequestAsync(request, isGenerationMode, selectedText);
         }
         finally
         {
@@ -100,15 +105,16 @@ public class ActionOrchestrationService : IDisposable
         }
 
         var request = new ActionExecutionRequest(result.Action, OutputMode.InPlace, null); // Smart Paste is always InPlace
-        await ProcessRequestAsync(request);
+        await ProcessRequestAsync(request, false);
     }
 
     /// <summary>
     /// Processes a request to execute an action.
     /// </summary>
     /// <param name="request">The action execution request.</param>
-    /// <param name="inputTextOverride">If provided, this text is used as input instead of getting text from the clipboard. Ideal for drag-and-drop.</param>
-    public async Task ProcessRequestAsync(ActionExecutionRequest request, string? inputTextOverride = null)
+    /// <param name="isGenerationMode">If true, the action is being executed in generation mode (no selection).</param>
+    /// <param name="inputTextOverride">If provided, this text is used as input instead of getting text from the clipboard. Ideal for drag-and-drop or pre-captured text.</param>
+    public async Task ProcessRequestAsync(ActionExecutionRequest request, bool isGenerationMode, string? inputTextOverride = null)
     {
         var overallStopwatch = Stopwatch.StartNew();
         AppEvents.RequestNotification($"Processing '{request.ActionToExecute.Name}' ...", NotificationType.Info);
@@ -119,15 +125,23 @@ public class ActionOrchestrationService : IDisposable
         
         try
         {
-            // Wait for the target window to restore focus if not using an override
-            if(inputTextOverride is null) await Task.Delay(200);
-            
-            var userInput = inputTextOverride ?? await _clipboardService.GetSelectedTextAsync();
-            if (string.IsNullOrWhiteSpace(userInput))
+            string? userInput;
+            if (request.ActionToExecute.RequiresSelection || !isGenerationMode)
             {
-                AppEvents.RequestNotification("No text selected or clipboard is empty.", NotificationType.Warning);
-            	_trackerService.CompleteAction(trackedAction.Id, ActionStatus.Error, TimeSpan.FromSeconds(2));
-                return;
+                // For selection-based actions, get the input text.
+                if (inputTextOverride is null) await Task.Delay(200); // Wait for focus
+                userInput = inputTextOverride ?? await _clipboardService.GetSelectedTextAsync();
+                if (string.IsNullOrWhiteSpace(userInput))
+                {
+                    AppEvents.RequestNotification("No text selected or clipboard is empty.", NotificationType.Warning);
+                    _trackerService.CompleteAction(trackedAction.Id, ActionStatus.Error, TimeSpan.FromSeconds(2));
+                    return;
+                }
+            }
+            else
+            {
+                // For generation actions, the user input is conceptually empty.
+                userInput = string.Empty;
             }
             
             _trackerService.UpdateStatus(trackedAction.Id, ActionStatus.Processing);
@@ -140,7 +154,10 @@ public class ActionOrchestrationService : IDisposable
                 ? $"{request.ActionToExecute.Instruction}\n\nIMPORTANT: After your main response, add a section that starts with '---EXPLANATION---' and explain the changes you made."
                 : request.ActionToExecute.Instruction;
             conversationHistory.Add(new ChatMessage("system", systemInstruction));
-            conversationHistory.Add(new ChatMessage("user", $"{request.ActionToExecute.Prefix}{userInput}"));
+            
+            // For generation actions, userInput will be empty.
+            var userMessage = $"{request.ActionToExecute.Prefix}{userInput}";
+            conversationHistory.Add(new ChatMessage("user", userMessage));
 
             var outputMode = request.Mode == OutputMode.Default
                 ? request.ActionToExecute.OutputMode
@@ -151,12 +168,12 @@ public class ActionOrchestrationService : IDisposable
             switch (outputMode)
             {
                 case OutputMode.Windowed:
-                    var windowedResult = await HandleWindowedModeAsync(request, conversationHistory, trackedAction.Cts.Token, localSessionId);
+                    var windowedResult = await HandleWindowedModeAsync(request, userInput, conversationHistory, trackedAction.Cts.Token, localSessionId);
                     wasSuccessful = windowedResult.Success;
                     localSessionId = windowedResult.SessionId;
                     break;
                 case OutputMode.InPlace:
-                    wasSuccessful = await HandleInPlaceModeAsync(request, conversationHistory, trackedAction.Cts.Token);
+                    wasSuccessful = await HandleInPlaceModeAsync(request, userInput, conversationHistory, trackedAction.Cts.Token);
                     break;
                 case OutputMode.Diff:
                     var diffResult = await HandleDiffModeAsync(request, userInput, conversationHistory, trackedAction.Cts.Token, localSessionId);
@@ -190,7 +207,7 @@ public class ActionOrchestrationService : IDisposable
         }
     }
 
-    private async Task<(bool Success, Guid? SessionId)> HandleWindowedModeAsync(ActionExecutionRequest request, List<ChatMessage> conversationHistory, CancellationToken cancellationToken, Guid? localSessionId)
+    private async Task<(bool Success, Guid? SessionId)> HandleWindowedModeAsync(ActionExecutionRequest request, string userInput, List<ChatMessage> conversationHistory, CancellationToken cancellationToken, Guid? localSessionId)
     {
         while (true)
         {
@@ -221,9 +238,10 @@ public class ActionOrchestrationService : IDisposable
 
             await LogToHistoryAsync(
                 request.ActionToExecute.Name,
+                request.ActionToExecute.Instruction,
                 provider.Name,
                 aiResponse.ProviderName,
-                conversationHistory.Last(m => m.Role == "user").Content,
+                userInput,
                 aiResponse.Content,
                 aiResponse.PromptTokens,
                 aiResponse.CompletionTokens,
@@ -241,7 +259,7 @@ public class ActionOrchestrationService : IDisposable
         return (true, localSessionId);
     }
 
-    private async Task<bool> HandleInPlaceModeAsync(ActionExecutionRequest request, List<ChatMessage> conversationHistory, CancellationToken cancellationToken)
+    private async Task<bool> HandleInPlaceModeAsync(ActionExecutionRequest request, string userInput, List<ChatMessage> conversationHistory, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var executionResult = await ExecuteRequestWithFallbackAsync(conversationHistory, request.ProviderOverride, cancellationToken);
@@ -259,9 +277,10 @@ public class ActionOrchestrationService : IDisposable
 
         await LogToHistoryAsync(
             request.ActionToExecute.Name,
+            request.ActionToExecute.Instruction,
             provider.Name,
             aiResponse.ProviderName,
-            conversationHistory.Last(m => m.Role == "user").Content,
+            userInput,
             aiResponse.Content,
             aiResponse.PromptTokens,
             aiResponse.CompletionTokens,
@@ -308,9 +327,10 @@ public class ActionOrchestrationService : IDisposable
                 case Accepted accepted:
                     await LogToHistoryAsync(
                         request.ActionToExecute.Name,
+                        request.ActionToExecute.Instruction,
                         provider.Name,
                         aiResponse.ProviderName,
-                        conversationHistory.Last(m => m.Role == "user").Content,
+                        originalInput,
                         accepted.NewText,
                         aiResponse.PromptTokens,
                         aiResponse.CompletionTokens,
@@ -409,13 +429,13 @@ public class ActionOrchestrationService : IDisposable
         return Task.FromResult<IAiProvider?>(null);
     }
     
-    private async Task LogToHistoryAsync(string actionName, string providerType, string modelUsed, string input, string output, long promptTokens, long completionTokens, double latencyMs, double inferenceSpeed)
+    private async Task LogToHistoryAsync(string actionName, string instruction, string providerType, string modelUsed, string input, string output, long promptTokens, long completionTokens, double latencyMs, double inferenceSpeed)
     {
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var historyService = scope.ServiceProvider.GetRequiredService<HistoryService>();
-            await historyService.AddHistoryEntryAsync(actionName, providerType, modelUsed, input, output, promptTokens, completionTokens, latencyMs, inferenceSpeed);
+            await historyService.AddHistoryEntryAsync(actionName, instruction, providerType, modelUsed, input, output, promptTokens, completionTokens, latencyMs, inferenceSpeed);
         }
         catch (Exception ex)
         {

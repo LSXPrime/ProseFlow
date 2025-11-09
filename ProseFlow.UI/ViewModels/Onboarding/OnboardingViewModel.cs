@@ -25,8 +25,10 @@ public enum OnboardingStep
     CloudSetup,
     LocalSetup,
     ActionsIntro,
+    TemplateTutorial,
     HotkeySetup,
     HotkeyTutorial,
+    WorkspaceIntro,
     Graduation
 }
 
@@ -36,6 +38,17 @@ public partial class PresetOnboardingViewModel(PresetDto preset) : ViewModelBase
     private bool _isSelected = true; // Default to selected
     public PresetDto Preset { get; } = preset;
 }
+
+/// <summary>
+/// A ViewModel for a single step in the visual progress indicator.
+/// </summary>
+public partial class OnboardingProgressStep : ObservableObject
+{
+    public required string Title { get; init; }
+    [ObservableProperty] private bool _isCompleted;
+    [ObservableProperty] private bool _isCurrent;
+}
+
 
 public partial class OnboardingViewModel(
     IServiceProvider serviceProvider,
@@ -72,6 +85,7 @@ public partial class OnboardingViewModel(
     private string _nextButtonText = "Continue";
     
     public ObservableCollection<PresetOnboardingViewModel> AvailablePresets { get; } = [];
+    public ObservableCollection<OnboardingProgressStep> ProgressSteps { get; } = [];
 
     public OnboardingViewModel() : this(
         Ioc.Default.GetRequiredService<IServiceProvider>(), 
@@ -83,10 +97,40 @@ public partial class OnboardingViewModel(
 
     public async Task InitializeAsync()
     {
+        InitializeProgressSteps();
+        UpdateProgressIndicator(CurrentStep);
+        
         var presets = await presetService.GetAvailablePresetsAsync();
         foreach (var preset in presets)
         {
             AvailablePresets.Add(new PresetOnboardingViewModel(preset));
+        }
+    }
+    
+    private void InitializeProgressSteps()
+    {
+        ProgressSteps.Add(new OnboardingProgressStep { Title = "Welcome" });
+        ProgressSteps.Add(new OnboardingProgressStep { Title = "Setup" });
+        ProgressSteps.Add(new OnboardingProgressStep { Title = "Actions" });
+        ProgressSteps.Add(new OnboardingProgressStep { Title = "Hotkeys" });
+        ProgressSteps.Add(new OnboardingProgressStep { Title = "Finish" });
+    }
+
+    private void UpdateProgressIndicator(OnboardingStep newStep)
+    {
+        var stepIndex = newStep switch
+        {
+            OnboardingStep.Welcome => 0,
+            OnboardingStep.ProviderChoice or OnboardingStep.CloudSetup or OnboardingStep.LocalSetup => 1,
+            OnboardingStep.ActionsIntro or OnboardingStep.TemplateTutorial => 2,
+            OnboardingStep.HotkeySetup or OnboardingStep.HotkeyTutorial => 3,
+            _ => 4,
+        };
+
+        for (int i = 0; i < ProgressSteps.Count; i++)
+        {
+            ProgressSteps[i].IsCurrent = (i == stepIndex);
+            ProgressSteps[i].IsCompleted = (i < stepIndex);
         }
     }
 
@@ -97,9 +141,14 @@ public partial class OnboardingViewModel(
 
     private void UpdateStep(OnboardingStep newStep)
     {
-        CurrentStep = newStep;
+        UpdateProgressIndicator(newStep);
         IsBackButtonVisible = newStep > OnboardingStep.Welcome;
-        NextButtonText = newStep == OnboardingStep.Graduation ? "Finish" : "Continue";
+        NextButtonText = newStep switch
+        {
+            OnboardingStep.Graduation => "Finish",
+            OnboardingStep.WorkspaceIntro => "I'll Explore This Later",
+            _ => "Continue"
+        };
 
         // Unsubscribe from previous VM events and global events
         if (CurrentContentViewModel is IDisposable disposable) disposable.Dispose();
@@ -127,6 +176,10 @@ public partial class OnboardingViewModel(
                 _ = localVm.OnNavigatedToAsync();
                 CurrentContentViewModel = localVm;
                 IsNextButtonEnabled = localVm.IsAModelSelected;
+                break;
+            case OnboardingStep.TemplateTutorial:
+                CurrentContentViewModel = serviceProvider.GetRequiredService<TemplateTutorialViewModel>();
+                IsNextButtonEnabled = true;
                 break;
             case OnboardingStep.HotkeyTutorial:
                 var tutorialVm = serviceProvider.GetRequiredService<HotkeyTutorialViewModel>();
@@ -193,13 +246,15 @@ public partial class OnboardingViewModel(
         // Go to the next logical step
         var nextStep = CurrentStep switch
         {
-            OnboardingStep.CloudSetup => OnboardingStep.ActionsIntro,
-            OnboardingStep.LocalSetup => OnboardingStep.ActionsIntro,
-            OnboardingStep.ActionsIntro => OnboardingStep.HotkeySetup,
+            OnboardingStep.CloudSetup or OnboardingStep.LocalSetup => OnboardingStep.ActionsIntro,
+            OnboardingStep.ActionsIntro => OnboardingStep.TemplateTutorial,
+            OnboardingStep.TemplateTutorial => OnboardingStep.HotkeySetup,
+            OnboardingStep.HotkeyTutorial => OnboardingStep.WorkspaceIntro,
+            OnboardingStep.WorkspaceIntro => OnboardingStep.Graduation,
             _ => CurrentStep + 1
         };
 
-        UpdateStep(nextStep);
+        CurrentStep = nextStep;
     }
     
     [RelayCommand]
@@ -212,7 +267,7 @@ public partial class OnboardingViewModel(
     [RelayCommand]
     private void ChooseProviderPath(string path)
     {
-        UpdateStep(path == "Cloud" ? OnboardingStep.CloudSetup : OnboardingStep.LocalSetup);
+        CurrentStep = path == "Cloud" ? OnboardingStep.CloudSetup : OnboardingStep.LocalSetup;
     }
 
     [RelayCommand]
@@ -226,11 +281,14 @@ public partial class OnboardingViewModel(
             OnboardingStep.ActionsIntro => OnboardingStep.ProviderChoice,
             OnboardingStep.CloudSetup => OnboardingStep.ProviderChoice,
             OnboardingStep.LocalSetup => OnboardingStep.ProviderChoice,
-            OnboardingStep.HotkeySetup => OnboardingStep.ActionsIntro,
+            OnboardingStep.TemplateTutorial => OnboardingStep.ActionsIntro,
+            OnboardingStep.HotkeySetup => OnboardingStep.TemplateTutorial,
+            OnboardingStep.WorkspaceIntro => OnboardingStep.HotkeyTutorial,
+            OnboardingStep.Graduation => OnboardingStep.WorkspaceIntro,
             _ => CurrentStep - 1
         };
 
-        UpdateStep(prevStep);
+        CurrentStep = prevStep;
     }
 
     public async Task SaveSettingsAsync()

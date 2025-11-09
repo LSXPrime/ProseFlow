@@ -16,9 +16,14 @@ public class HistoryEntry : EntityBase
     /// The name of the action that was executed.
     /// </summary>
     public required string ActionName { get; set; }
+    
+    /// <summary>
+    /// The core instruction or prompt used for the action. For "Custom Instruction" this is the user's ad-hoc prompt.
+    /// </summary>
+    public required string Instruction { get; set; }
 
     /// <summary>
-    /// The original input text provided by the user.
+    /// The original input text provided by the user (e.g., selected text).
     /// </summary>
     public required string InputText { get; set; }
 

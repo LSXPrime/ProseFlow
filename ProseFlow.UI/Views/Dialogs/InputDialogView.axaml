@@ -1,15 +1,16 @@
-﻿<UserControl
+﻿<shadui:Window
     x:Class="ProseFlow.UI.Views.Dialogs.InputDialogView"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
     xmlns:vm="using:ProseFlow.UI.ViewModels.Dialogs"
-    mc:Ignorable="d"
-    d:DesignHeight="300"
-    d:DesignWidth="400"
-    x:DataType="vm:InputDialogViewModel">
+    x:DataType="vm:InputDialogViewModel"
+    
+    Title="{Binding Title}"
+    Width="550" SizeToContent="Height" WindowState="Normal"
+    WindowStartupLocation="CenterOwner" CanResize="False" ShowInTaskbar="False"
+    IsTitleBarVisible="False" SystemDecorations="None"
+    ShowBottomBorder="False" BorderBrush="Transparent" BorderThickness="0">
 
     <Border Padding="16">
         <StackPanel Width="400" Spacing="16">
@@ -17,9 +18,9 @@
             <TextBlock Classes="p Muted" Text="{Binding Message}" TextWrapping="Wrap" Margin="16,0" />
 
             <TextBox Margin="16"
-                shadui:ElementAssist.FocusOnLoad="True"
-                Text="{Binding InputText, Mode=TwoWay}"
-                KeyDown="InputTextBox_OnKeyDown" />
+                     shadui:ElementAssist.FocusOnLoad="True"
+                     Text="{Binding InputText, Mode=TwoWay}"
+                     KeyDown="InputTextBox_OnKeyDown" />
 
             <StackPanel
                 Margin="16,0"
@@ -37,4 +38,4 @@
             </StackPanel>
         </StackPanel>
     </Border>
-</UserControl>
+</shadui:Window>

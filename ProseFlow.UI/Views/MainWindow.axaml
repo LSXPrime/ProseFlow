@@ -19,6 +19,7 @@
     Width="1920" Height="1080"
     MinWidth="960" MinHeight="740"
     WindowStartupLocation="CenterScreen"
+    RequestedThemeVariant="Dark"
 
     TitleFontWeight="SemiBold"
     SaveWindowState="True">

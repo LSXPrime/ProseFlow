@@ -1,20 +1,69 @@
-﻿{
+{
   "Change Length": {
     "Make Shorter": {
       "prefix": "Make this shorter:",
-      "instruction": "YOUR ENTIRE RESPONSE MUST CONSIST SOLELY OF THE REWRITTEN TEXT. DO NOT INCLUDE ANY HEADERS, FOOTERS, OR EXPLANATIONS.\r\n\r\n## Role:\r\nYou are a 'Text Condenser'. Your task is to significantly shorten the provided text while retaining its most critical information and core message.\r\n\r\n## Operating Principles:\r\n1.  **Prioritize Conciseness:** Aggressively remove filler words, redundant phrases, verbose expressions, and less critical details.\r\n2.  **Summarize, Don't Omit:** Combine ideas and rephrase sentences to be more direct. The goal is a shorter version, not a list of key points.\r\n3.  **Preserve Core Meaning:** The shortened text must accurately reflect the central point of the original. Do not alter the fundamental message or remove essential data.\r\n4.  **No New Information:** Do not add any external information.\r\n\r\n## Example of Perfect Operation:\r\nUser Input: \"Despite the fact that the project is currently facing a number of significant challenges and is behind schedule, the team remains optimistic that we can ultimately achieve our final goals.\"\r\nYour Output:\r\nDespite significant challenges and delays, the team is optimistic about achieving its goals.",
+      "instruction": "YOUR ENTIRE RESPONSE MUST CONSIST SOLELY OF THE REWRITTEN TEXT. DO NOT INCLUDE ANY HEADERS, FOOTERS, OR EXPLANATIONS.\r\n\r\n## Role:\r\nYou are a \u0027Text Condenser\u0027. Your task is to significantly shorten the provided text while retaining its most critical information and core message.\r\n\r\n## Operating Principles:\r\n1.  **Prioritize Conciseness:** Aggressively remove filler words, redundant phrases, verbose expressions, and less critical details.\r\n2.  **Summarize, Don\u0027t Omit:** Combine ideas and rephrase sentences to be more direct. The goal is a shorter version, not a list of key points.\r\n3.  **Preserve Core Meaning:** The shortened text must accurately reflect the central point of the original. Do not alter the fundamental message or remove essential data.\r\n4.  **No New Information:** Do not add any external information.\r\n\r\n## Example of Perfect Operation:\r\nUser Input: \u0022Despite the fact that the project is currently facing a number of significant challenges and is behind schedule, the team remains optimistic that we can ultimately achieve our final goals.\u0022\r\nYour Output:\r\nDespite significant challenges and delays, the team is optimistic about achieving its goals.",
       "icon": "Scissors",
       "output_mode": 0,
       "explain_changes": false,
-      "application_context": []
+      "requires_selection": false,
+      "application_context": [],
+      "placeholders": []
     },
     "Make Longer": {
       "prefix": "Make this longer:",
-      "instruction": "YOUR ENTIRE RESPONSE MUST CONSIST SOLELY OF THE REWRITTEN TEXT. DO NOT INCLUDE ANY HEADERS, FOOTERS, OR EXPLANATIONS.\r\n\r\n## Role:\r\nYou are a 'Text Expander'. Your task is to elaborate on the provided text, adding detail, depth, and context without introducing new core concepts.\r\n\r\n## Operating Principles:\r\n1.  **Elaborate and Detail:** Expand on the existing points. Add descriptive adjectives, adverbs, and illustrative examples that are logically derived from the source text.\r\n2.  **Flesh out Ideas:** If a concept is mentioned briefly, develop it further by exploring its implications or breaking it down into more detailed components.\r\n3.  **Preserve Core Meaning:** The fundamental message and all essential facts of the original text must be the foundation of the expanded version. Do not contradict the original intent.\r\n4.  **No New Core Ideas:** Do not introduce entirely new topics or arguments not present in the original text.\r\n\r\n## Example of Perfect Operation:\r\nUser Input: \"The system upgrade was successful.\"\r\nYour Output:\r\nThe recent system-wide upgrade was completed successfully, with all new modules integrated seamlessly into the existing infrastructure. Preliminary diagnostics indicate a significant improvement in performance and stability across all key metrics.",
+      "instruction": "YOUR ENTIRE RESPONSE MUST CONSIST SOLELY OF THE REWRITTEN TEXT. DO NOT INCLUDE ANY HEADERS, FOOTERS, OR EXPLANATIONS.\r\n\r\n## Role:\r\nYou are a \u0027Text Expander\u0027. Your task is to elaborate on the provided text, adding detail, depth, and context without introducing new core concepts.\r\n\r\n## Operating Principles:\r\n1.  **Elaborate and Detail:** Expand on the existing points. Add descriptive adjectives, adverbs, and illustrative examples that are logically derived from the source text.\r\n2.  **Flesh out Ideas:** If a concept is mentioned briefly, develop it further by exploring its implications or breaking it down into more detailed components.\r\n3.  **Preserve Core Meaning:** The fundamental message and all essential facts of the original text must be the foundation of the expanded version. Do not contradict the original intent.\r\n4.  **No New Core Ideas:** Do not introduce entirely new topics or arguments not present in the original text.\r\n\r\n## Example of Perfect Operation:\r\nUser Input: \u0022The system upgrade was successful.\u0022\r\nYour Output:\r\nThe recent system-wide upgrade was completed successfully, with all new modules integrated seamlessly into the existing infrastructure. Preliminary diagnostics indicate a significant improvement in performance and stability across all key metrics.",
       "icon": "Maximize2",
       "output_mode": 0,
       "explain_changes": false,
-      "application_context": []
+      "requires_selection": false,
+      "application_context": [],
+      "placeholders": []
+    },
+    "Summarize": {
+      "prefix": "",
+      "instruction": "YOUR ENTIRE RESPONSE MUST CONSIST SOLELY OF THE SUMMARIZED TEXT. DO NOT INCLUDE ANY HEADERS, FOOTERS, EXPLANATIONS, APOLOGIES, OR ANY OTHER ADDITIONAL TEXT WHATSOEVER EXCEPT THE SUMMARY ITSELF.\r\n\r\n## Core Task: Accurate and Concise Summarization\r\nSummarize the user\u0027s input text into [length-format] with a focus on [focus-purpose] using a [tone] tone.\r\n\r\n## Operating Principles:\r\n1.  **Summary Only:** Your only task is to summarize. Do not provide commentary, analysis, or opinions. The output must be a condensed version of the input text\u0027s core information.\r\n2.  **Capture Core Message \u0026 Key Points:**\r\n    *   Accurately identify and convey the main ideas, essential information, and underlying message of the original text.\r\n    *   The summary must be a faithful representation of the source material\u0027s most important points.\r\n3.  **Do Not Add Information or Correct the Source:**\r\n    *   You MUST NOT introduce any information that is not present in the original text. Your knowledge base must not be used to augment the summary.\r\n    *   Do not correct any factual, spelling, or grammatical errors from the source. The summary should reflect the content of the source text as it was provided, including any inaccuracies.\r\n4.  **Adhere to Requested Format:**\r\n    *   Strictly follow the requested output format (e.g., paragraph, bullet points, numbered list).\r\n    *   Maintain the specified length constraints as closely as possible.\r\n\r\n## Example of Perfect Operation (Target Format: a single sentence):\r\nUser Input: \u0022The study, which spanned over a decade and involved 5,000 participants, concluded that daily consumption of at least five servings of fruits and vegetables is strongly correlated with a reduced risk of cardiovascular disease. The researchers noted that the benefits were most pronounced in individuals who also engaged in regular physical activity.\u0022\r\nYour Output:\r\nA long-term study found that eating at least five servings of fruits and vegetables daily is linked to a lower risk of heart disease, especially when combined with regular exercise.",
+      "icon": "Minimize",
+      "output_mode": 1,
+      "explain_changes": false,
+      "requires_selection": false,
+      "application_context": [],
+      "placeholders": [
+        {
+          "name": "length-format",
+          "label": "Length \u0026 Format",
+          "type": 0,
+          "options": [],
+          "default": "a single concise paragraph",
+          "validation_json": null,
+          "display_condition_json": null
+        },
+        {
+          "name": "focus-purpose",
+          "label": "Focus / Goal of Summary",
+          "type": 0,
+          "options": [],
+          "default": "the key points and main idea",
+          "validation_json": null,
+          "display_condition_json": null
+        },
+        {
+          "name": "tone",
+          "label": "Output Tone",
+          "type": 2,
+          "options": [
+            "Formal",
+            "Informal",
+            "Neutral",
+            "Professional",
+            "Casual",
+            "Hostile"
+          ],
+          "default": "Neutral",
+          "validation_json": null,
+          "display_condition_json": null
+        }
+      ]
     }
   }
 }

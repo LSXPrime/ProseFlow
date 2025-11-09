@@ -55,14 +55,13 @@ public class AdvancedDataGridDropBehavior : AvaloniaObject
 
         // Scenario 1: Dragging an Action row
         var row = control.FindAncestorOfType<DataGridRow>();
-        if (row?.DataContext is Action action)
+        if (row?.DataContext is ViewModels.Actions.SelectableActionViewModel actionVm)
         {
-            dataObject.Set(ActionDragKey, action);
-            dragData = action;
+            dataObject.Set(ActionDragKey, actionVm);
+            dragData = actionVm;
         }
-        else
+        else // Scenario 2: Dragging a Group header
         {
-            // Scenario 2: Dragging a Group header
             var header = control.FindAncestorOfType<DataGridRowGroupHeader>();
             if (header?.DataContext is DataGridCollectionViewGroup { Key: { } groupKey })
             {

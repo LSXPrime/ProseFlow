@@ -1,5 +1,7 @@
-﻿using Avalonia.Controls;
+﻿using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using ProseFlow.Core.Models;
 using ProseFlow.UI.Behaviors;
 using ProseFlow.UI.ViewModels.Actions;
@@ -46,12 +48,10 @@ public partial class ActionsView : UserControl
         // Prevent dropping an action onto its own group.
         if (draggedAction.ActionGroupId == targetGroup.Id)
         {
-            e.DragEffects = DragDropEffects.None; // Or potentially allow reorder within same group, but our current ViewModel handles that. For moving, we want to disallow.
+            e.DragEffects = DragDropEffects.None;
             return;
         }
-
-        // If we reach here, it means we are dragging an Action and dropping it onto a different group's Card.
-        // Allow the move operation.
+        
         e.DragEffects = DragDropEffects.Move;
     }
 
@@ -73,14 +73,18 @@ public partial class ActionsView : UserControl
         // Prevent dropping an action onto its own group.
         if (draggedAction.ActionGroupId == targetGroup.Id) return;
 
-        // Execute the ViewModel's ReorderCommand. The command is designed to handle
-        // a pair of (draggedItem: object, targetItem: object).
-        // Here, draggedItem is an Action, and targetItem is an ActionGroup.
+        // Execute the reorder command.
         var parameter = (dragged: (object)draggedAction, target: (object)targetGroup);
         if (vm.ReorderCommand.CanExecute(parameter))
         {
             vm.ReorderCommand.Execute(parameter);
             e.Handled = true; // Mark the event as handled.
         }
+    }
+
+    private async void BulkMoveConfirmButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        await Task.Delay(100);
+        BulkMoveButton.Flyout?.Hide();
     }
 }

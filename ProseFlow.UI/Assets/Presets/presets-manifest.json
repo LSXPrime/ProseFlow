@@ -2,7 +2,7 @@
   {
     "Id": "general",
     "Name": "General",
-    "Description": "Core text correction, proofreading and rewriting.",
+    "Description": "Core text tasks such as proofreading, rewriting and translation.",
     "ResourcePath": "ProseFlow.UI.Assets.Presets.general.json"
   },
   {
